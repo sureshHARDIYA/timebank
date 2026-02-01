@@ -4,9 +4,9 @@ import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatDuration } from "@/lib/utils";
 import type { Client, TimeEntry } from "@/types/database";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { endOfDay, format, startOfDay } from "date-fns";
+import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useMemo } from "react";
 
 function useProject(id: string | null) {
   const supabase = createClient();
@@ -45,11 +45,27 @@ function useTimeEntries(projectId: string | null) {
 
 export default function PrintReportPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
+  const startParam = searchParams.get("start");
+  const endParam = searchParams.get("end");
+
   const { data: project, isLoading: projectLoading } = useProject(id);
   const { data: entries = [], isLoading: entriesLoading } = useTimeEntries(id);
 
-  const totalMinutes = entries.reduce((acc, e) => {
+  const filteredEntries = useMemo(() => {
+    if (!startParam || !endParam) return entries;
+    const rangeStart = startOfDay(new Date(startParam)).getTime();
+    const rangeEnd = endOfDay(new Date(endParam)).getTime();
+    return entries.filter((e) => {
+      if (!e.end_time) return false;
+      const start = new Date(e.start_time).getTime();
+      const end = new Date(e.end_time).getTime();
+      return start <= rangeEnd && end >= rangeStart;
+    });
+  }, [entries, startParam, endParam]);
+
+  const totalMinutes = filteredEntries.reduce((acc, e) => {
     if (!e.end_time) return acc;
     const start = new Date(e.start_time).getTime();
     const end = new Date(e.end_time).getTime();
@@ -59,6 +75,8 @@ export default function PrintReportPage() {
   const client = project?.clients as Client | undefined;
   const hourlyRate = client?.hourly_rate_usd ?? 0;
   const totalBill = (totalMinutes / 60) * hourlyRate;
+
+  const periodLabel = startParam && endParam ? `${startParam} – ${endParam}` : "All time";
 
   const ready = !projectLoading && !entriesLoading && project;
 
@@ -82,6 +100,7 @@ export default function PrintReportPage() {
         <p className="mt-2 text-sm text-gray-500">
           Client: {client?.name} ({client?.email})
         </p>
+        <p className="text-sm text-gray-500">Period: {periodLabel}</p>
         <p className="text-sm text-gray-500">Generated: {format(new Date(), "PPpp")}</p>
       </div>
 
@@ -95,7 +114,7 @@ export default function PrintReportPage() {
           </tr>
         </thead>
         <tbody>
-          {entries.map((e) => {
+          {filteredEntries.map((e) => {
             const start = new Date(e.start_time);
             const end = e.end_time ? new Date(e.end_time) : null;
             const mins = end ? (end.getTime() - start.getTime()) / (60 * 1000) : 0;

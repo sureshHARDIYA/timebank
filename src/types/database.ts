@@ -189,6 +189,53 @@ export interface Database {
           tag_ids?: string[];
         };
       };
+      invoices: {
+        Row: {
+          id: string;
+          project_id: string;
+          user_id: string;
+          period_start: string;
+          period_end: string;
+          total_minutes: number;
+          amount_usd: number;
+          is_sent: boolean;
+          sent_at: string | null;
+          is_paid: boolean;
+          paid_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          user_id: string;
+          period_start: string;
+          period_end: string;
+          total_minutes: number;
+          amount_usd: number;
+          is_sent?: boolean;
+          sent_at?: string | null;
+          is_paid?: boolean;
+          paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          project_id?: string;
+          user_id?: string;
+          period_start?: string;
+          period_end?: string;
+          total_minutes?: number;
+          amount_usd?: number;
+          is_sent?: boolean;
+          sent_at?: string | null;
+          is_paid?: boolean;
+          paid_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
       tags: {
         Row: {
           id: string;
@@ -252,3 +299,4 @@ export type TimeEntry = Database["public"]["Tables"]["time_entries"]["Row"];
 export type ActiveTimer = Database["public"]["Tables"]["active_timers"]["Row"];
 export type Tag = Database["public"]["Tables"]["tags"]["Row"];
 export type TimeEntryTag = Database["public"]["Tables"]["time_entry_tags"]["Row"];
+export type Invoice = Database["public"]["Tables"]["invoices"]["Row"];
