@@ -1,20 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { TagMultiSelect } from "@/components/tags/tag-multi-select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -22,6 +17,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -30,15 +27,26 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, ArrowUp, ArrowDown, ArrowUpDown, Plus, ListTodo, MoreVertical, Pencil, Trash2 } from "lucide-react";
-import Link from "next/link";
-import { formatDuration, formatTaskIdentifierWithProject } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { stopCurrentTimerIfAny } from "@/lib/timer";
-import type { Project, Task, TimeEntry, Client, Tag } from "@/types/database";
-import { TagMultiSelect } from "@/components/tags/tag-multi-select";
+import { formatDuration, formatTaskIdentifierWithProject } from "@/lib/utils";
+import type { Client, Project, Tag, Task, TimeEntry } from "@/types/database";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  ArrowUpDown,
+  MoreVertical,
+  Pencil,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useState } from "react";
 import { EditTimeEntryDialog } from "./edit-time-entry-dialog";
 import { TaskDetailModal } from "./task-detail-modal";
-
 
 function useProject(id: string | null) {
   const supabase = createClient();
@@ -88,10 +96,7 @@ function useProjectTasks(projectId: string | null) {
       const tagIds = Array.from(new Set(taskTagRows.map((r) => r.tag_id)));
       const tagMap = new Map<string, Tag>();
       if (tagIds.length > 0) {
-        const { data: tagRows } = await supabase
-          .from("tags")
-          .select("*")
-          .in("id", tagIds);
+        const { data: tagRows } = await supabase.from("tags").select("*").in("id", tagIds);
         (tagRows ?? []).forEach((t) => tagMap.set(t.id, t as Tag));
       }
 
@@ -104,12 +109,13 @@ function useProjectTasks(projectId: string | null) {
 
       const assigneeIds = Array.from(
         new Set(
-          tasks
-            .map((t) => (t as { assignee_id?: string }).assignee_id)
-            .filter(Boolean) as string[]
+          tasks.map((t) => (t as { assignee_id?: string }).assignee_id).filter(Boolean) as string[]
         )
       );
-      const assigneeMap = new Map<string, { id: string; full_name: string | null; email: string | null }>();
+      const assigneeMap = new Map<
+        string,
+        { id: string; full_name: string | null; email: string | null }
+      >();
       if (assigneeIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
@@ -122,7 +128,7 @@ function useProjectTasks(projectId: string | null) {
         ...t,
         task_tags: ttByTask.get(t.id) ?? [],
         assignee: (t as { assignee_id?: string }).assignee_id
-          ? assigneeMap.get((t as { assignee_id: string }).assignee_id) ?? null
+          ? (assigneeMap.get((t as { assignee_id: string }).assignee_id) ?? null)
           : null,
       })) as TaskWithTags[];
     },
@@ -177,7 +183,9 @@ function useUserTags() {
   return useQuery({
     queryKey: ["tags"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return [];
       const { data, error } = await supabase
         .from("tags")
@@ -246,7 +254,9 @@ export default function ProjectDetailPage() {
   }
 
   async function startTimerForTask(taskId: string, taskName: string) {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
     const task = tasks.find((t) => t.id === taskId);
     const tagIds = (task as TaskWithTags)?.task_tags?.map((tt) => tt.tag_id) ?? [];
@@ -307,9 +317,7 @@ export default function ProjectDetailPage() {
             ACTIVE
           </span>
           <Button asChild className="bg-[#3ECF8E] hover:bg-[#2EB67D]">
-            <Link href={`/dashboard/${id}/report`}>
-              View report & billing
-            </Link>
+            <Link href={`/dashboard/${id}/report`}>View report & billing</Link>
           </Button>
         </div>
       </div>
@@ -325,7 +333,11 @@ export default function ProjectDetailPage() {
               Manage tags
             </Link>
           </div>
-          <AddTaskButton projectId={id} tags={tags} onAdded={() => queryClient.invalidateQueries({ queryKey: ["tasks", id] })} />
+          <AddTaskButton
+            projectId={id}
+            tags={tags}
+            onAdded={() => queryClient.invalidateQueries({ queryKey: ["tasks", id] })}
+          />
         </div>
         <KanbanBoard
           tasks={tasks}
@@ -365,7 +377,8 @@ export default function ProjectDetailPage() {
         <CardHeader>
           <CardTitle>Recent time entries</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Use the menu on each row to edit or delete. Start a timer from a task card or add time from the calendar.
+            Use the menu on each row to edit or delete. Start a timer from a task card or add time
+            from the calendar.
           </p>
         </CardHeader>
         <CardContent>
@@ -599,9 +612,7 @@ function KanbanCard({
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent) => void;
 }) {
-  const taskTags = (task.task_tags ?? [])
-    .map((tt) => tt.tags)
-    .filter((t): t is Tag => t != null);
+  const taskTags = (task.task_tags ?? []).map((tt) => tt.tags).filter((t): t is Tag => t != null);
   const assignee = task.assignee;
   const identifier = formatTaskIdentifierWithProject(
     (task as { task_number?: number }).task_number,
@@ -637,7 +648,10 @@ function KanbanCard({
             </span>
           ))}
           {assignee && (
-            <span className="text-xs text-muted-foreground" title={`Assigned to ${assignee.full_name || assignee.email || "Me"}`}>
+            <span
+              className="text-xs text-muted-foreground"
+              title={`Assigned to ${assignee.full_name || assignee.email || "Me"}`}
+            >
               {assignee.full_name || assignee.email || "Me"}
             </span>
           )}
@@ -665,15 +679,13 @@ function TimeEntryRow({
   const start = new Date(entry.start_time);
   const end = entry.end_time ? new Date(entry.end_time) : null;
   const mins = end ? (end.getTime() - start.getTime()) / (60 * 1000) : 0;
-  const description = entry.task_name ?? (tasks.find((t) => t.id === entry.task_id)?.name ?? "—");
+  const description = entry.task_name ?? tasks.find((t) => t.id === entry.task_id)?.name ?? "—";
 
   return (
     <TableRow>
       <TableCell className="font-medium">{description}</TableCell>
       <TableCell className="text-muted-foreground">{start.toLocaleString()}</TableCell>
-      <TableCell className="text-muted-foreground">
-        {end ? end.toLocaleString() : "—"}
-      </TableCell>
+      <TableCell className="text-muted-foreground">{end ? end.toLocaleString() : "—"}</TableCell>
       <TableCell>{formatDuration(Math.round(mins))}</TableCell>
       <TableCell>
         <div className="flex flex-wrap gap-1">
@@ -703,7 +715,10 @@ function TimeEntryRow({
               <Pencil className="mr-2 h-4 w-4" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive">
+            <DropdownMenuItem
+              onClick={onDelete}
+              className="text-destructive focus:text-destructive"
+            >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </DropdownMenuItem>
@@ -740,14 +755,19 @@ function AddTaskButton({
     const nextNumber = (maxRow?.task_number ?? 0) + 1;
     const { data: task, error } = await supabase
       .from("tasks")
-      .insert({ project_id: projectId, name: name.trim(), status: "backlog", task_number: nextNumber })
+      .insert({
+        project_id: projectId,
+        name: name.trim(),
+        status: "backlog",
+        task_number: nextNumber,
+      })
       .select("id")
       .single();
     if (error) return;
     if (task?.id && selectedTagIds.length > 0) {
-      await supabase.from("task_tags").insert(
-        selectedTagIds.map((tag_id) => ({ task_id: task.id, tag_id }))
-      );
+      await supabase
+        .from("task_tags")
+        .insert(selectedTagIds.map((tag_id) => ({ task_id: task.id, tag_id })));
     }
     setName("");
     setSelectedTagIds([]);
@@ -788,83 +808,16 @@ function AddTaskButton({
               </div>
             )}
             <DialogFooter>
-              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button onClick={addTask} className="bg-[#3ECF8E] hover:bg-[#2EB67D]">Add</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={addTask} className="bg-[#3ECF8E] hover:bg-[#2EB67D]">
+                Add
+              </Button>
             </DialogFooter>
           </div>
         </DialogContent>
       </Dialog>
     </>
-  );
-}
-
-function TaskRow({
-  task,
-  onUpdated,
-}: {
-  task: TaskWithTags;
-  onUpdated: () => void;
-}) {
-  const supabase = createClient();
-  const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(task.name);
-  const taskTags = (task.task_tags ?? [])
-    .map((tt) => tt.tags)
-    .filter((t): t is Tag => t != null);
-
-  async function toggleComplete() {
-    await supabase.from("tasks").update({ completed: !task.completed }).eq("id", task.id);
-    onUpdated();
-  }
-
-  async function saveName() {
-    if (name.trim() && name !== task.name) {
-      await supabase.from("tasks").update({ name: name.trim() }).eq("id", task.id);
-      onUpdated();
-    }
-    setEditing(false);
-  }
-
-  return (
-    <li className="flex flex-wrap items-center gap-2 rounded-md border px-3 py-2">
-      <input
-        type="checkbox"
-        checked={task.completed}
-        onChange={toggleComplete}
-        className="h-4 w-4 shrink-0 rounded border-gray-300"
-      />
-      {editing ? (
-        <Input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onBlur={saveName}
-          onKeyDown={(e) => e.key === "Enter" && saveName()}
-          className="h-8 flex-1 min-w-0"
-        />
-      ) : (
-        <span
-          className={`min-w-0 flex-1 cursor-pointer text-sm ${task.completed ? "text-muted-foreground line-through" : ""}`}
-          onClick={() => setEditing(true)}
-        >
-          {task.name}
-        </span>
-      )}
-      {taskTags.length > 0 && (
-        <span className="flex flex-wrap items-center gap-1">
-          {taskTags.map((tag) => (
-            <span
-              key={tag.id}
-              className="inline-flex items-center rounded-full border border-transparent px-2 py-0.5 text-xs font-medium"
-              style={{
-                backgroundColor: tag.color ? `${tag.color}33` : undefined,
-                color: tag.color || undefined,
-              }}
-            >
-              {tag.name}
-            </span>
-          ))}
-        </span>
-      )}
-    </li>
   );
 }

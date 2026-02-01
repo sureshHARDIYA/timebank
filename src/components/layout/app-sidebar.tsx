@@ -1,19 +1,11 @@
 "use client";
 
+import { cn } from "@/lib/utils";
+import { BarChart3, Calendar, FileText, LayoutDashboard, Settings, Tag, Users } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
-  LayoutDashboard,
-  Users,
-  FileText,
-  Calendar,
-  BarChart3,
-  Tag,
-  Settings,
-} from "lucide-react";
-import Image from "next/image";
-import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/dashboard", label: "Projects", icon: LayoutDashboard },
@@ -41,19 +33,33 @@ export function AppSidebar() {
       <div className="flex h-14 items-center border-b border-white/10 px-3">
         {expanded ? (
           <Link href="/dashboard" className="flex items-center gap-2 font-semibold">
-            <Image src="/logo.png" alt="Time Track" width={32} height={32} className="rounded" priority />
+            <Image
+              src="/logo.png"
+              alt="Time Track"
+              width={32}
+              height={32}
+              className="rounded"
+              priority
+            />
             <span className="text-sm">Time Track</span>
           </Link>
         ) : (
           <Link href="/dashboard" className="flex justify-center w-full">
-            <Image src="/logo.png" alt="Time Track" width={32} height={32} className="rounded" priority />
+            <Image
+              src="/logo.png"
+              alt="Time Track"
+              width={32}
+              height={32}
+              className="rounded"
+              priority
+            />
           </Link>
         )}
       </div>
       <nav className="flex-1 space-y-0.5 p-2">
         {navItems.map((item) => {
           const Icon = item.icon;
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
           return (
             <Link
               key={item.href}

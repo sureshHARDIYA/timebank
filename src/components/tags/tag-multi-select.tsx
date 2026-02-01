@@ -62,7 +62,9 @@ export function TagMultiSelect({
         );
       })}
       {tags.length === 0 && (
-        <span className="text-xs text-muted-foreground">No tags. Add tags in the Tags page (sidebar).</span>
+        <span className="text-xs text-muted-foreground">
+          No tags. Add tags in the Tags page (sidebar).
+        </span>
       )}
     </div>
   );

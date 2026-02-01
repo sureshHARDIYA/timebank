@@ -1,19 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -21,13 +16,18 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Plus, MoreVertical, Search, FileText } from "lucide-react";
-import Link from "next/link";
-import type { Client } from "@/types/database";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
+import type { Client } from "@/types/database";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { FileText, MoreVertical, Plus, Search } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const clientSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -68,7 +68,9 @@ export default function ClientsPage() {
   });
 
   async function onSubmit(data: ClientForm) {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
     if (editing) {
       const { error } = await supabase
@@ -178,9 +180,7 @@ export default function ClientsPage() {
                               View report
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEdit(client)}>
-                            Edit
-                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEdit(client)}>Edit</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -197,7 +197,9 @@ export default function ClientsPage() {
           <DialogHeader>
             <DialogTitle>{editing ? "Edit client" : "New client"}</DialogTitle>
             <DialogDescription>
-              {editing ? "Update client details and hourly rate." : "Add a client and set their hourly rate in USD."}
+              {editing
+                ? "Update client details and hourly rate."
+                : "Add a client and set their hourly rate in USD."}
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -228,7 +230,9 @@ export default function ClientsPage() {
                 {...form.register("hourly_rate_usd")}
               />
               {form.formState.errors.hourly_rate_usd && (
-                <p className="text-sm text-destructive">{form.formState.errors.hourly_rate_usd.message}</p>
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.hourly_rate_usd.message}
+                </p>
               )}
             </div>
             <DialogFooter>

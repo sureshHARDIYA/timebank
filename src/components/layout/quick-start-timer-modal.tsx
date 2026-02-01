@@ -1,18 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { TagMultiSelect } from "@/components/tags/tag-multi-select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,17 +18,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play } from "lucide-react";
-import { TagMultiSelect } from "@/components/tags/tag-multi-select";
+import { createClient } from "@/lib/supabase/client";
 import { stopCurrentTimerIfAny } from "@/lib/timer";
 import type { Tag } from "@/types/database";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Play } from "lucide-react";
+import { useEffect, useState } from "react";
 
 function useProjects() {
   const supabase = createClient();
   return useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return [];
       const { data, error } = await supabase
         .from("projects")
@@ -66,7 +68,9 @@ function useUserTags() {
   return useQuery({
     queryKey: ["tags"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return [];
       const { data, error } = await supabase
         .from("tags")
@@ -110,10 +114,12 @@ export function QuickStartTimerModal({
   }, [open]);
 
   async function handleStart() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user || !projectId) return;
     const taskLabel = taskId
-      ? tasks.find((t) => t.id === taskId)?.name ?? taskName.trim()
+      ? (tasks.find((t) => t.id === taskId)?.name ?? taskName.trim())
       : taskName.trim() || null;
     setStarting(true);
     await stopCurrentTimerIfAny(supabase, queryClient);
@@ -143,7 +149,13 @@ export function QuickStartTimerModal({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Project</Label>
-            <Select value={projectId} onValueChange={(v) => { setProjectId(v); setTaskId(""); }}>
+            <Select
+              value={projectId}
+              onValueChange={(v) => {
+                setProjectId(v);
+                setTaskId("");
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select project" />
               </SelectTrigger>
@@ -160,7 +172,10 @@ export function QuickStartTimerModal({
             <>
               <div className="space-y-2">
                 <Label>Task (optional)</Label>
-                <Select value={taskId || "__none__"} onValueChange={(v) => setTaskId(v === "__none__" ? "" : v)}>
+                <Select
+                  value={taskId || "__none__"}
+                  onValueChange={(v) => setTaskId(v === "__none__" ? "" : v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select task" />
                   </SelectTrigger>

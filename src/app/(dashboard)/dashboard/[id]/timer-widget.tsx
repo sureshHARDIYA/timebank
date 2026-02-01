@@ -1,8 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { TagMultiSelect } from "@/components/tags/tag-multi-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,18 +11,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play, Square } from "lucide-react";
-import { TagMultiSelect } from "@/components/tags/tag-multi-select";
-import type { Task, Tag } from "@/types/database";
-import { formatDuration } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { stopCurrentTimerIfAny } from "@/lib/timer";
+import { formatDuration } from "@/lib/utils";
+import type { Tag, Task } from "@/types/database";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Play, Square } from "lucide-react";
+import { useEffect, useState } from "react";
 
 function useActiveTimer() {
   const supabase = createClient();
   return useQuery({
     queryKey: ["active-timer"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return null;
       const { data, error } = await supabase
         .from("active_timers")
@@ -39,7 +41,6 @@ function useActiveTimer() {
 
 export function TimerWidget({
   projectId,
-  projectName,
   tasks,
   tags,
   onStop,
@@ -62,7 +63,9 @@ export function TimerWidget({
 
   useEffect(() => {
     if (taskId) {
-      const task = tasks.find((t) => t.id === taskId) as { task_tags?: { tag_id: string }[] } | undefined;
+      const task = tasks.find((t) => t.id === taskId) as
+        | { task_tags?: { tag_id: string }[] }
+        | undefined;
       setSelectedTagIds(task?.task_tags?.map((tt) => tt.tag_id) ?? []);
     } else {
       setSelectedTagIds([]);
@@ -82,7 +85,9 @@ export function TimerWidget({
   }, [activeTimer]);
 
   async function startTimer() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
     await stopCurrentTimerIfAny(supabase, queryClient);
     await supabase.from("active_timers").upsert(
@@ -100,7 +105,9 @@ export function TimerWidget({
   }
 
   async function stopTimer() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user || !activeTimer) return;
     const tagIds = (activeTimer as { tag_ids?: string[] }).tag_ids ?? [];
     const { data: entry, error } = await supabase
@@ -116,9 +123,9 @@ export function TimerWidget({
       .select("id")
       .single();
     if (!error && entry?.id && tagIds.length > 0) {
-      await supabase.from("time_entry_tags").insert(
-        tagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id }))
-      );
+      await supabase
+        .from("time_entry_tags")
+        .insert(tagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id })));
     }
     await supabase.from("active_timers").delete().eq("user_id", user.id);
     queryClient.invalidateQueries({ queryKey: ["active-timer"] });
@@ -130,7 +137,8 @@ export function TimerWidget({
   if (activeTimer && !isThisProject) {
     return (
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-        Timer is running on another project. Stop it from the Time Tracker page or from that project.
+        Timer is running on another project. Stop it from the Time Tracker page or from that
+        project.
       </div>
     );
   }
@@ -158,7 +166,10 @@ export function TimerWidget({
     <div className="space-y-3 rounded-lg border p-4">
       <Label>Start timer</Label>
       <div className="flex flex-wrap gap-2">
-        <Select value={taskId || "__none__"} onValueChange={(v) => setTaskId(v === "__none__" ? "" : v)}>
+        <Select
+          value={taskId || "__none__"}
+          onValueChange={(v) => setTaskId(v === "__none__" ? "" : v)}
+        >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Task (optional)" />
           </SelectTrigger>
@@ -185,11 +196,7 @@ export function TimerWidget({
       {tags.length > 0 && (
         <div className="space-y-1.5">
           <Label className="text-xs">Tags (optional)</Label>
-          <TagMultiSelect
-            tags={tags}
-            selectedIds={selectedTagIds}
-            onChange={setSelectedTagIds}
-          />
+          <TagMultiSelect tags={tags} selectedIds={selectedTagIds} onChange={setSelectedTagIds} />
         </div>
       )}
     </div>

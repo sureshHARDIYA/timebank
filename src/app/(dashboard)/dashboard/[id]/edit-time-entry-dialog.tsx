@@ -1,21 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/client";
+import { TagMultiSelect } from "@/components/tags/tag-multi-select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,8 +19,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TagMultiSelect } from "@/components/tags/tag-multi-select";
-import type { TimeEntry, Task, Tag } from "@/types/database";
+import { createClient } from "@/lib/supabase/client";
+import type { Tag, Task, TimeEntry } from "@/types/database";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const schema = z
   .object({
@@ -83,16 +83,18 @@ export function EditTimeEntryDialog({
     setSelectedTagIds([]);
     if (entry.id) {
       setLoadingTags(true);
-      supabase
-        .from("time_entry_tags")
-        .select("tag_id")
-        .eq("time_entry_id", entry.id)
-        .then(({ data }) => {
-          setSelectedTagIds((data ?? []).map((r) => r.tag_id));
-        })
-        .finally(() => setLoadingTags(false));
+      void Promise.resolve(
+        supabase
+          .from("time_entry_tags")
+          .select("tag_id")
+          .eq("time_entry_id", entry.id)
+          .then(({ data }) => {
+            setSelectedTagIds((data ?? []).map((r) => r.tag_id));
+          })
+      ).finally(() => setLoadingTags(false));
     }
-  }, [entry, open, form.reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- form.reset and supabase are stable
+  }, [entry, open]);
 
   async function onSubmit(data: FormData) {
     if (!entry) return;
@@ -112,9 +114,9 @@ export function EditTimeEntryDialog({
     }
     await supabase.from("time_entry_tags").delete().eq("time_entry_id", entry.id);
     if (selectedTagIds.length > 0) {
-      await supabase.from("time_entry_tags").insert(
-        selectedTagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id }))
-      );
+      await supabase
+        .from("time_entry_tags")
+        .insert(selectedTagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id })));
     }
     onSaved();
     onOpenChange(false);
@@ -127,9 +129,7 @@ export function EditTimeEntryDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit time entry</DialogTitle>
-          <DialogDescription>
-            Update task, times, and tags for this entry.
-          </DialogDescription>
+          <DialogDescription>Update task, times, and tags for this entry.</DialogDescription>
         </DialogHeader>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           {form.formState.errors.root && (
@@ -163,7 +163,9 @@ export function EditTimeEntryDialog({
               <Label>Start time</Label>
               <Input type="datetime-local" {...form.register("start_time")} />
               {form.formState.errors.start_time && (
-                <p className="text-xs text-destructive">{form.formState.errors.start_time.message}</p>
+                <p className="text-xs text-destructive">
+                  {form.formState.errors.start_time.message}
+                </p>
               )}
             </div>
             <div className="space-y-2">

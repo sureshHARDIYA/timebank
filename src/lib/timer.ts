@@ -20,7 +20,9 @@ export async function stopCurrentTimerIfAny(
   supabase: SupabaseClient,
   queryClient: QueryClient
 ): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   if (!user) return;
 
   const { data: current } = await supabase
@@ -48,9 +50,9 @@ export async function stopCurrentTimerIfAny(
       .select("id")
       .single();
     if (entry?.id && tagIds.length > 0) {
-      await supabase.from("time_entry_tags").insert(
-        tagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id }))
-      );
+      await supabase
+        .from("time_entry_tags")
+        .insert(tagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id })));
     }
     queryClient.invalidateQueries({ queryKey: ["time-entries", timer.project_id] });
   }

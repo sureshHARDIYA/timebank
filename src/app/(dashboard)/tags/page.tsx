@@ -1,24 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { PRESET_COLORS } from "@/components/tags/tag-multi-select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
-import { Tag, Plus, Pencil, Trash2 } from "lucide-react";
-import { PRESET_COLORS } from "@/components/tags/tag-multi-select";
 import type { Tag as TagType } from "@/types/database";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 function useUserTags() {
   const supabase = createClient();
@@ -120,8 +120,7 @@ export default function TagsPage() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Tags</h1>
         <p className="text-muted-foreground">
-          Create and manage your tags. Assign them to time entries when logging
-          time.
+          Create and manage your tags. Assign them to time entries when logging time.
         </p>
       </div>
 
@@ -183,8 +182,7 @@ export default function TagsPage() {
                     size="icon"
                     className="h-6 w-6 rounded-full hover:bg-black/10"
                     onClick={() => {
-                      if (confirm(`Delete tag "${tag.name}"?`))
-                        deleteTag(tag.id);
+                      if (confirm(`Delete tag "${tag.name}"?`)) deleteTag(tag.id);
                     }}
                     aria-label={`Delete ${tag.name}`}
                   >
@@ -202,8 +200,7 @@ export default function TagsPage() {
           <DialogHeader>
             <DialogTitle>New tag</DialogTitle>
             <DialogDescription>
-              Create a tag. You can assign it to any time entry when logging
-              time.
+              Create a tag. You can assign it to any time entry when logging time.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -231,9 +228,7 @@ export default function TagsPage() {
                     onClick={() => setColor(c)}
                     className={cn(
                       "h-6 w-6 rounded-full border-2 transition-transform",
-                      color === c
-                        ? "scale-110 border-foreground"
-                        : "border-transparent"
+                      color === c ? "scale-110 border-foreground" : "border-transparent"
                     )}
                     style={{ backgroundColor: c }}
                   />
@@ -287,9 +282,7 @@ export default function TagsPage() {
                     onClick={() => setColor(c)}
                     className={cn(
                       "h-6 w-6 rounded-full border-2 transition-transform",
-                      color === c
-                        ? "scale-110 border-foreground"
-                        : "border-transparent"
+                      color === c ? "scale-110 border-foreground" : "border-transparent"
                     )}
                     style={{ backgroundColor: c }}
                   />

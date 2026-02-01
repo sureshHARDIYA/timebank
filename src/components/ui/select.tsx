@@ -1,8 +1,8 @@
 "use client";
 
-import * as React from "react";
-import * as SelectPrimitive from "@radix-ui/react-select";
 import { cn } from "@/lib/utils";
+import * as SelectPrimitive from "@radix-ui/react-select";
+import * as React from "react";
 
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
@@ -32,7 +32,9 @@ const SelectTrigger = React.forwardRef<
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
+        aria-hidden
       >
+        <title>Chevron</title>
         <path d="m6 9 6 6 6-6" />
       </svg>
     </SelectPrimitive.Icon>
@@ -92,7 +94,9 @@ const SelectItem = React.forwardRef<
           fill="none"
           stroke="currentColor"
           strokeWidth="2"
+          aria-hidden
         >
+          <title>Check</title>
           <path d="M20 6 9 17l-5-5" />
         </svg>
       </SelectPrimitive.ItemIndicator>

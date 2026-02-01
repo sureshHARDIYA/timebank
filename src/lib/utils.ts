@@ -34,7 +34,10 @@ export function formatCurrency(amount: number): string {
 
 /** First 4 letters from project name, uppercased (e.g. "Fenceworkshop" -> "FENC"). Fallback "PRJ" if none. */
 export function getProjectPrefix(projectName: string): string {
-  const letters = (projectName || "").replace(/[^a-zA-Z]/g, "").slice(0, 4).toUpperCase();
+  const letters = (projectName || "")
+    .replace(/[^a-zA-Z]/g, "")
+    .slice(0, 4)
+    .toUpperCase();
   return letters || "PRJ";
 }
 

@@ -1,11 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,18 +11,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Play, Square, Clock } from "lucide-react";
-import Link from "next/link";
-import { formatDuration } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 import { stopCurrentTimerIfAny } from "@/lib/timer";
-import type { Project, Task } from "@/types/database";
+import { formatDuration } from "@/lib/utils";
+import type { Task } from "@/types/database";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Play, Square } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 function useProjects() {
   const supabase = createClient();
   return useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return [];
       const { data, error } = await supabase
         .from("projects")
@@ -57,10 +59,12 @@ function useProjectTasks(projectId: string | null) {
 
 function useActiveTimer() {
   const supabase = createClient();
-      return useQuery({
+  return useQuery({
     queryKey: ["active-timer"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return null;
       const { data, error } = await supabase
         .from("active_timers")
@@ -99,7 +103,9 @@ export default function TrackerPage() {
 
   async function startTimer() {
     if (!projectId) return;
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
     await stopCurrentTimerIfAny(supabase, queryClient);
     await supabase.from("active_timers").upsert(
@@ -116,7 +122,9 @@ export default function TrackerPage() {
   }
 
   async function stopTimer() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user || !activeTimer) return;
     await supabase.from("time_entries").insert({
       user_id: user.id,
@@ -179,54 +187,57 @@ export default function TrackerPage() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Project</Label>
-                  <Select value={projectId} onValueChange={(v) => setProjectId(v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select project" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Task (optional)</Label>
-                  <Select value={taskId || "__none__"} onValueChange={(v) => setTaskId(v === "__none__" ? "" : v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select task" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">— None —</SelectItem>
-                      {tasks.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label>Project</Label>
+                <Select value={projectId} onValueChange={(v) => setProjectId(v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {projects.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="mt-4 space-y-2">
-                <Label>Or task name (ad-hoc)</Label>
-                <Input
-                  placeholder="e.g. Design review"
-                  value={taskName}
-                  onChange={(e) => setTaskName(e.target.value)}
-                />
+              <div className="space-y-2">
+                <Label>Task (optional)</Label>
+                <Select
+                  value={taskId || "__none__"}
+                  onValueChange={(v) => setTaskId(v === "__none__" ? "" : v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select task" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">— None —</SelectItem>
+                    {tasks.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <Button
-                className="mt-4 bg-[#3ECF8E] hover:bg-[#2EB67D]"
-                onClick={startTimer}
-                disabled={!projectId}
-              >
-                <Play className="mr-2 h-4 w-4" />
-                Start timer
-              </Button>
+            </div>
+            <div className="mt-4 space-y-2">
+              <Label>Or task name (ad-hoc)</Label>
+              <Input
+                placeholder="e.g. Design review"
+                value={taskName}
+                onChange={(e) => setTaskName(e.target.value)}
+              />
+            </div>
+            <Button
+              className="mt-4 bg-[#3ECF8E] hover:bg-[#2EB67D]"
+              onClick={startTimer}
+              disabled={!projectId}
+            >
+              <Play className="mr-2 h-4 w-4" />
+              Start timer
+            </Button>
           </CardContent>
         </Card>
       )}

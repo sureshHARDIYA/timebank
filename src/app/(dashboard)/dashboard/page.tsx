@@ -1,24 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -27,20 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Search,
-  Plus,
-  MoreVertical,
-  LayoutGrid,
-  List,
-  Filter,
-} from "lucide-react";
-import { useForm } from "react-hook-form";
+import { createClient } from "@/lib/supabase/client";
+import type { Client, Project } from "@/types/database";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Filter, LayoutGrid, List, MoreVertical, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import type { Project, Client } from "@/types/database";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const newProjectSchema = z.object({
   name: z.string().min(1, "Project name is required"),
@@ -73,10 +59,7 @@ function useClients() {
   return useQuery({
     queryKey: ["clients"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("clients")
-        .select("*")
-        .order("name");
+      const { data, error } = await supabase.from("clients").select("*").order("name");
       if (error) throw error;
       return data as Client[];
     },
@@ -187,27 +170,19 @@ export default function DashboardPage() {
             >
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold">
-                    {project.name}
-                  </CardTitle>
+                  <CardTitle className="text-base font-semibold">{project.name}</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    {project.clients?.name ?? "—"} •{" "}
-                    {project.clients?.email ?? ""}
+                    {project.clients?.name ?? "—"} • {project.clients?.email ?? ""}
                   </p>
                 </div>
                 <DropdownMenu>
-                  <DropdownMenuTrigger
-                    asChild
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => router.push(`/dashboard/${project.id}`)}
-                    >
+                    <DropdownMenuItem onClick={() => router.push(`/dashboard/${project.id}`)}>
                       Open
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
@@ -247,9 +222,7 @@ export default function DashboardPage() {
                   >
                     <td className="px-4 py-3">
                       <div className="font-medium">{project.name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {project.id.slice(0, 8)}…
-                      </div>
+                      <div className="text-xs text-muted-foreground">{project.id.slice(0, 8)}…</div>
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">
                       {project.clients?.name ?? "—"}
@@ -257,26 +230,15 @@ export default function DashboardPage() {
                     <td className="px-4 py-3 text-muted-foreground">
                       {new Date(project.created_at).toLocaleDateString()}
                     </td>
-                    <td
-                      className="px-4 py-3"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() =>
-                              router.push(`/dashboard/${project.id}`)
-                            }
-                          >
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/${project.id}`)}>
                             Open
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -295,22 +257,15 @@ export default function DashboardPage() {
           title="New project"
           description="Create a new project and link it to a client."
         >
-          <form
-            onSubmit={form.handleSubmit(onCreateProject)}
-            className="space-y-4"
-          >
+          <form onSubmit={form.handleSubmit(onCreateProject)} className="space-y-4">
             {form.formState.errors.root && (
-              <p className="text-sm text-destructive">
-                {form.formState.errors.root.message}
-              </p>
+              <p className="text-sm text-destructive">{form.formState.errors.root.message}</p>
             )}
             <div className="space-y-2">
               <Label>Project name</Label>
               <Input placeholder="My project" {...form.register("name")} />
               {form.formState.errors.name && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.name.message}
-                </p>
+                <p className="text-sm text-destructive">{form.formState.errors.name.message}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -337,11 +292,7 @@ export default function DashboardPage() {
               )}
             </div>
             <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpenNew(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => setOpenNew(false)}>
                 Cancel
               </Button>
               <Button type="submit" className="bg-[#3ECF8E] hover:bg-[#2EB67D]">

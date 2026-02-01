@@ -1,8 +1,8 @@
 "use client";
 
-import { Tag, ExternalLink } from "lucide-react";
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ExternalLink, Tag } from "lucide-react";
+import Link from "next/link";
 
 export function ProjectTagsSection() {
   return (
@@ -22,7 +22,8 @@ export function ProjectTagsSection() {
       </CardHeader>
       <CardContent>
         <p className="text-sm text-muted-foreground">
-          Tags are global. Create tags in the Tags page, then assign them when logging time (manual entry or timer).
+          Tags are global. Create tags in the Tags page, then assign them when logging time (manual
+          entry or timer).
         </p>
       </CardContent>
     </Card>

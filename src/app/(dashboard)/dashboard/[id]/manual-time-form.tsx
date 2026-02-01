@@ -1,11 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/client";
+import { TagMultiSelect } from "@/components/tags/tag-multi-select";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -15,9 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TagMultiSelect } from "@/components/tags/tag-multi-select";
-import type { Task, Tag } from "@/types/database";
+import { createClient } from "@/lib/supabase/client";
+import type { Tag, Task } from "@/types/database";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 const schema = z
   .object({
@@ -62,7 +62,9 @@ export function ManualTimeForm({
   });
 
   async function onSubmit(data: FormData) {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
     const { data: entry, error } = await supabase
       .from("time_entries")
@@ -81,9 +83,9 @@ export function ManualTimeForm({
       return;
     }
     if (entry?.id && selectedTagIds.length > 0) {
-      await supabase.from("time_entry_tags").insert(
-        selectedTagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id }))
-      );
+      await supabase
+        .from("time_entry_tags")
+        .insert(selectedTagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id })));
     }
     form.reset({
       task_id: "",
@@ -133,10 +135,7 @@ export function ManualTimeForm({
               </div>
               <div className="space-y-2">
                 <Label>Or task name (ad-hoc)</Label>
-                <Input
-                  placeholder="e.g. Meeting"
-                  {...form.register("task_name")}
-                />
+                <Input placeholder="e.g. Meeting" {...form.register("task_name")} />
               </div>
             </div>
             {tags.length > 0 && (
@@ -154,14 +153,18 @@ export function ManualTimeForm({
                 <Label>Start time</Label>
                 <Input type="datetime-local" {...form.register("start_time")} />
                 {form.formState.errors.start_time && (
-                  <p className="text-xs text-destructive">{form.formState.errors.start_time.message}</p>
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.start_time.message}
+                  </p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label>End time</Label>
                 <Input type="datetime-local" {...form.register("end_time")} />
                 {form.formState.errors.end_time && (
-                  <p className="text-xs text-destructive">{form.formState.errors.end_time.message}</p>
+                  <p className="text-xs text-destructive">
+                    {form.formState.errors.end_time.message}
+                  </p>
                 )}
               </div>
             </div>

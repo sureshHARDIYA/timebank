@@ -1,18 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
+import { TagMultiSelect } from "@/components/tags/tag-multi-select";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogFooter,
+  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -20,16 +18,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { TagMultiSelect } from "@/components/tags/tag-multi-select";
-import { format, setHours, setMinutes } from "date-fns";
+import { createClient } from "@/lib/supabase/client";
 import type { Tag } from "@/types/database";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format, setHours, setMinutes } from "date-fns";
+import { useEffect, useState } from "react";
 
 function useProjects() {
   const supabase = createClient();
   return useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return [];
       const { data, error } = await supabase
         .from("projects")
@@ -65,7 +67,9 @@ function useUserTags() {
   return useQuery({
     queryKey: ["tags"],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return [];
       const { data, error } = await supabase
         .from("tags")
@@ -121,7 +125,9 @@ export function CalendarAddTimeModal({
   }, [open]);
 
   async function handleSubmit() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user || !projectId || !startStr || !endStr) return;
     const start = new Date(startStr);
     const end = new Date(endStr);
@@ -140,9 +146,9 @@ export function CalendarAddTimeModal({
       .select("id")
       .single();
     if (!error && entry?.id && selectedTagIds.length > 0) {
-      await supabase.from("time_entry_tags").insert(
-        selectedTagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id }))
-      );
+      await supabase
+        .from("time_entry_tags")
+        .insert(selectedTagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id })));
     }
     setSubmitting(false);
     if (!error) {
@@ -163,7 +169,13 @@ export function CalendarAddTimeModal({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Project</Label>
-            <Select value={projectId} onValueChange={(v) => { setProjectId(v); setTaskId(""); }}>
+            <Select
+              value={projectId}
+              onValueChange={(v) => {
+                setProjectId(v);
+                setTaskId("");
+              }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select project" />
               </SelectTrigger>
@@ -180,7 +192,10 @@ export function CalendarAddTimeModal({
             <>
               <div className="space-y-2">
                 <Label>Task (optional)</Label>
-                <Select value={taskId || "__none__"} onValueChange={(v) => setTaskId(v === "__none__" ? "" : v)}>
+                <Select
+                  value={taskId || "__none__"}
+                  onValueChange={(v) => setTaskId(v === "__none__" ? "" : v)}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select task" />
                   </SelectTrigger>
@@ -229,10 +244,18 @@ export function CalendarAddTimeModal({
           )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!projectId || !startStr || !endStr || new Date(endStr) <= new Date(startStr) || submitting}
+            disabled={
+              !projectId ||
+              !startStr ||
+              !endStr ||
+              new Date(endStr) <= new Date(startStr) ||
+              submitting
+            }
             className="bg-[#3ECF8E] hover:bg-[#2EB67D]"
           >
             Add time

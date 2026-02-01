@@ -1,24 +1,16 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Mail, FileDown } from "lucide-react";
-import Link from "next/link";
-import { formatDuration, formatCurrency } from "@/lib/utils";
-import type { TimeEntry, Client } from "@/types/database";
+import { createClient } from "@/lib/supabase/client";
+import { formatCurrency, formatDuration } from "@/lib/utils";
+import type { Client, TimeEntry } from "@/types/database";
+import { useQuery } from "@tanstack/react-query";
 import { format, startOfDay, subDays } from "date-fns";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
+import { ArrowLeft, FileDown, Mail } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 function useProject(id: string | null) {
   const supabase = createClient();
@@ -65,14 +57,21 @@ function useTimeEntryTags(entryIds: string[]) {
         .from("time_entry_tags")
         .select("time_entry_id, tag_id")
         .in("time_entry_id", entryIds);
-      if (e1 || !links?.length) return { links: [] as { time_entry_id: string; tag_id: string }[], tags: [] as { id: string; name: string; color: string }[] };
-      const tagIds = [...new Set(links.map((l) => l.tag_id))];
+      if (e1 || !links?.length)
+        return {
+          links: [] as { time_entry_id: string; tag_id: string }[],
+          tags: [] as { id: string; name: string; color: string }[],
+        };
+      const tagIds = Array.from(new Set(links.map((l) => l.tag_id)));
       const { data: tags, error: e2 } = await supabase
         .from("tags")
         .select("id, name, color")
         .in("id", tagIds);
       if (e2) return { links: links as { time_entry_id: string; tag_id: string }[], tags: [] };
-      return { links: links as { time_entry_id: string; tag_id: string }[], tags: (tags ?? []) as { id: string; name: string; color: string }[] };
+      return {
+        links: links as { time_entry_id: string; tag_id: string }[],
+        tags: (tags ?? []) as { id: string; name: string; color: string }[],
+      };
     },
   });
 }
@@ -97,7 +96,6 @@ export default function ProjectReportPage() {
   const hourlyRate = client?.hourly_rate_usd ?? 0;
   const totalBill = (totalMinutes / 60) * hourlyRate;
 
-  const last30Days = subDays(new Date(), 30);
   const byDay: Record<string, number> = {};
   for (let d = 0; d < 30; d++) {
     const day = startOfDay(subDays(new Date(), 29 - d));
@@ -138,9 +136,11 @@ export default function ProjectReportPage() {
     const start = new Date(e.start_time).getTime();
     const end = new Date(e.end_time).getTime();
     const mins = (end - start) / (60 * 1000);
-    const tagsOnEntry = entryTagLinks.filter((l) => l.time_entry_id === e.id).map((l) => tagById[l.tag_id]?.name ?? "—");
+    const tagsOnEntry = entryTagLinks
+      .filter((l) => l.time_entry_id === e.id)
+      .map((l) => tagById[l.tag_id]?.name ?? "—");
     if (tagsOnEntry.length === 0) {
-      byTag["Untagged"] = (byTag["Untagged"] ?? 0) + mins;
+      byTag.Untagged = (byTag.Untagged ?? 0) + mins;
     } else {
       tagsOnEntry.forEach((name) => {
         byTag[name] = (byTag[name] ?? 0) + mins;
@@ -154,11 +154,7 @@ export default function ProjectReportPage() {
   function handleEmailBill() {
     const subject = encodeURIComponent(`Invoice: ${project?.name ?? "Project"}`);
     const body = encodeURIComponent(
-      `Project: ${project?.name}\n` +
-        `Total time: ${formatDuration(Math.round(totalMinutes))}\n` +
-        `Hourly rate: ${formatCurrency(hourlyRate)}\n` +
-        `Total amount: ${formatCurrency(totalBill)}\n\n` +
-        `Thank you.`
+      `Project: ${project?.name}\nTotal time: ${formatDuration(Math.round(totalMinutes))}\nHourly rate: ${formatCurrency(hourlyRate)}\nTotal amount: ${formatCurrency(totalBill)}\n\nThank you.`
     );
     window.location.href = `mailto:${client?.email ?? ""}?subject=${subject}&body=${body}`;
   }
@@ -288,7 +284,9 @@ export default function ProjectReportPage() {
         <Card>
           <CardHeader>
             <CardTitle>Time by tag</CardTitle>
-            <p className="text-sm text-muted-foreground">Overview of time spent per tag for this project.</p>
+            <p className="text-sm text-muted-foreground">
+              Overview of time spent per tag for this project.
+            </p>
           </CardHeader>
           <CardContent>
             <div className="h-[280px] w-full">

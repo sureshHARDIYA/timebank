@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
-import Link from "next/link";
-import { Clock, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 import { formatDurationWithSeconds } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import { Clock, Square } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 const DEFAULT_TITLE = "Time Track";
 
@@ -33,14 +33,28 @@ export function ActiveTimerBadge() {
 
   useEffect(() => {
     async function load() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return;
       const { data } = await supabase
         .from("active_timers")
         .select("id, project_id, task_id, started_at, task_name, project:projects(name)")
         .eq("user_id", user.id)
         .maybeSingle();
-      setTimer(data ?? null);
+      if (!data) {
+        setTimer(null);
+        return;
+      }
+      const project = Array.isArray(data.project) ? data.project[0] : data.project;
+      setTimer({
+        id: data.id,
+        project_id: data.project_id,
+        task_id: data.task_id,
+        task_name: data.task_name,
+        started_at: data.started_at,
+        ...(project && { project: { name: project.name } }),
+      });
     }
     load();
     const interval = setInterval(load, 5000);
@@ -50,7 +64,10 @@ export function ActiveTimerBadge() {
   async function stopTimer(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    const { data: { user } } = await supabase.auth.getUser();
+    if (!timer) return;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return;
     setStopping(true);
     const activeTimer = timer as { tag_ids?: string[] };
@@ -69,9 +86,9 @@ export function ActiveTimerBadge() {
         .select("id")
         .single();
       if (entry?.id && tagIds.length > 0) {
-        await supabase.from("time_entry_tags").insert(
-          tagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id }))
-        );
+        await supabase
+          .from("time_entry_tags")
+          .insert(tagIds.map((tag_id) => ({ time_entry_id: entry.id, tag_id })));
       }
       queryClient.invalidateQueries({ queryKey: ["time-entries", timer.project_id] });
     }

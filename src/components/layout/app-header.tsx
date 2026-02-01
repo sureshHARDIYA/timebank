@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -10,15 +8,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, LogOut, User, Play } from "lucide-react";
-import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { LogOut, Play, Search, User } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { ActiveTimerBadge } from "./active-timer-badge";
 import { QuickStartTimerModal } from "./quick-start-timer-modal";
 
 export function AppHeader() {
   const router = useRouter();
   const supabase = createClient();
-  const [user, setUser] = useState<{ email?: string; user_metadata?: { full_name?: string } } | null>(null);
+  const [user, setUser] = useState<{
+    email?: string;
+    user_metadata?: { full_name?: string };
+  } | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setUser(user ?? null));
@@ -87,10 +90,7 @@ export function AppHeader() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      <QuickStartTimerModal
-        open={quickStartOpen}
-        onClose={() => setQuickStartOpen(false)}
-      />
+      <QuickStartTimerModal open={quickStartOpen} onClose={() => setQuickStartOpen(false)} />
     </header>
   );
 }

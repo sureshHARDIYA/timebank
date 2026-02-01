@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
-import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
-import { formatDuration, formatCurrency } from "@/lib/utils";
-import type { TimeEntry, Client } from "@/types/database";
+import { formatCurrency, formatDuration } from "@/lib/utils";
+import type { Client, TimeEntry } from "@/types/database";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
+import { useParams } from "next/navigation";
+import { useEffect } from "react";
 
 function useProject(id: string | null) {
   const supabase = createClient();
@@ -113,7 +113,9 @@ export default function PrintReportPage() {
 
       <div className="mt-8 flex justify-end border-t pt-6">
         <div className="text-right">
-          <p className="text-sm text-gray-600">Total time: {formatDuration(Math.round(totalMinutes))}</p>
+          <p className="text-sm text-gray-600">
+            Total time: {formatDuration(Math.round(totalMinutes))}
+          </p>
           {hourlyRate > 0 && (
             <>
               <p className="text-sm text-gray-600">Rate: {formatCurrency(hourlyRate)}/hr</p>

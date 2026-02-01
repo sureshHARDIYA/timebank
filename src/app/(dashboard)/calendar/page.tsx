@@ -1,35 +1,37 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { createClient } from "@/lib/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { CalendarAddTimeModal } from "./add-time-modal";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { createClient } from "@/lib/supabase/client";
+import { formatDuration } from "@/lib/utils";
+import type { TimeEntry } from "@/types/database";
+import { useQuery } from "@tanstack/react-query";
 import {
-  format,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
   addDays,
   addMonths,
-  subMonths,
-  isSameMonth,
+  endOfMonth,
+  endOfWeek,
+  format,
   isSameDay,
+  isSameMonth,
   parseISO,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
 } from "date-fns";
-import { formatDuration } from "@/lib/utils";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
-import type { TimeEntry } from "@/types/database";
+import { useMemo, useState } from "react";
+import { CalendarAddTimeModal } from "./add-time-modal";
 
 function useTimeEntriesForRange(start: Date, end: Date) {
   const supabase = createClient();
   return useQuery({
     queryKey: ["calendar-entries", format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd")],
     queryFn: async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       if (!user) return [];
       const { data, error } = await supabase
         .from("time_entries")
@@ -87,9 +89,7 @@ export default function CalendarPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-2xl font-bold tracking-tight">Calendar</h1>
-        <p className="text-muted-foreground">
-          See where your time was spent by day.
-        </p>
+        <p className="text-muted-foreground">See where your time was spent by day.</p>
       </div>
 
       <Card>
@@ -110,11 +110,7 @@ export default function CalendarPage() {
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setViewDate(new Date())}
-            >
+            <Button variant="ghost" size="sm" onClick={() => setViewDate(new Date())}>
               Today
             </Button>
           </div>
@@ -162,9 +158,11 @@ export default function CalendarPage() {
                   </button>
                   <div className="space-y-1">
                     {dayEntries.slice(0, 3).map((e) => {
-                      const proj = (e as { project?: { id: string; name: string } }).project?.name ?? "—";
+                      const proj =
+                        (e as { project?: { id: string; name: string } }).project?.name ?? "—";
                       const mins = e.end_time
-                        ? (new Date(e.end_time).getTime() - new Date(e.start_time).getTime()) / (60 * 1000)
+                        ? (new Date(e.end_time).getTime() - new Date(e.start_time).getTime()) /
+                          (60 * 1000)
                         : 0;
                       return (
                         <Link
@@ -174,7 +172,9 @@ export default function CalendarPage() {
                           title={`${proj}: ${formatDuration(Math.round(mins))}`}
                         >
                           <span className="font-medium">{proj}</span>{" "}
-                          <span className="text-muted-foreground">{formatDuration(Math.round(mins))}</span>
+                          <span className="text-muted-foreground">
+                            {formatDuration(Math.round(mins))}
+                          </span>
                         </Link>
                       );
                     })}
