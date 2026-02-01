@@ -111,16 +111,20 @@ export function CalendarAddTimeModal({
     if (!selectedDate || !open) return;
     const dayStart = setMinutes(setHours(selectedDate, 9), 0);
     const dayEnd = setMinutes(setHours(selectedDate, 17), 0);
-    setStartStr(format(dayStart, "yyyy-MM-dd'T'HH:mm"));
-    setEndStr(format(dayEnd, "yyyy-MM-dd'T'HH:mm"));
+    queueMicrotask(() => {
+      setStartStr(format(dayStart, "yyyy-MM-dd'T'HH:mm"));
+      setEndStr(format(dayEnd, "yyyy-MM-dd'T'HH:mm"));
+    });
   }, [selectedDate, open]);
 
   useEffect(() => {
     if (!open) {
-      setProjectId("");
-      setTaskId("");
-      setTaskName("");
-      setSelectedTagIds([]);
+      queueMicrotask(() => {
+        setProjectId("");
+        setTaskId("");
+        setTaskName("");
+        setSelectedTagIds([]);
+      });
     }
   }, [open]);
 

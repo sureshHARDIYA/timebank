@@ -182,12 +182,12 @@ function ReportsContent() {
   useEffect(() => {
     if (clients.length === 0) return;
     if (clientFromUrl && clients.some((c) => c.id === clientFromUrl)) {
-      setClientId(clientFromUrl);
+      queueMicrotask(() => setClientId(clientFromUrl));
     }
   }, [clients, clientFromUrl]);
 
   useEffect(() => {
-    if (clientId) setProjectId("");
+    if (clientId) queueMicrotask(() => setProjectId(""));
   }, [clientId]);
 
   const displayProjects = projectId ? projects.filter((p) => p.id === projectId) : projects;

@@ -106,10 +106,12 @@ export function QuickStartTimerModal({
 
   useEffect(() => {
     if (!open) {
-      setProjectId("");
-      setTaskId("");
-      setTaskName("");
-      setSelectedTagIds([]);
+      queueMicrotask(() => {
+        setProjectId("");
+        setTaskId("");
+        setTaskName("");
+        setSelectedTagIds([]);
+      });
     }
   }, [open]);
 

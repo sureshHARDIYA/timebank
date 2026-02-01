@@ -25,7 +25,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Filter, LayoutGrid, List, MoreVertical, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 const newProjectSchema = z.object({
@@ -81,6 +81,7 @@ export default function DashboardPage() {
     resolver: zodResolver(newProjectSchema),
     defaultValues: { name: "", client_id: "" },
   });
+  const clientIdValue = useWatch({ control: form.control, name: "client_id", defaultValue: "" });
 
   async function onCreateProject(data: NewProjectForm) {
     const {
@@ -270,10 +271,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-2">
               <Label>Client</Label>
-              <Select
-                value={form.watch("client_id")}
-                onValueChange={(v) => form.setValue("client_id", v)}
-              >
+              <Select value={clientIdValue} onValueChange={(v) => form.setValue("client_id", v)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select a client" />
                 </SelectTrigger>

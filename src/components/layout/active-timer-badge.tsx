@@ -100,12 +100,12 @@ export function ActiveTimerBadge() {
 
   useEffect(() => {
     if (!timer) {
-      setElapsed(0);
+      queueMicrotask(() => setElapsed(0));
       return;
     }
     const start = new Date(timer.started_at).getTime();
     const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
-    tick();
+    queueMicrotask(() => tick());
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [timer]);

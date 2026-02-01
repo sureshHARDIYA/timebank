@@ -66,20 +66,21 @@ export function TimerWidget({
       const task = tasks.find((t) => t.id === taskId) as
         | { task_tags?: { tag_id: string }[] }
         | undefined;
-      setSelectedTagIds(task?.task_tags?.map((tt) => tt.tag_id) ?? []);
+      const ids = task?.task_tags?.map((tt) => tt.tag_id) ?? [];
+      queueMicrotask(() => setSelectedTagIds(ids));
     } else {
-      setSelectedTagIds([]);
+      queueMicrotask(() => setSelectedTagIds([]));
     }
   }, [taskId, tasks]);
 
   useEffect(() => {
     if (!activeTimer) {
-      setElapsed(0);
+      queueMicrotask(() => setElapsed(0));
       return;
     }
     const start = new Date(activeTimer.started_at).getTime();
     const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
-    tick();
+    queueMicrotask(() => tick());
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [activeTimer]);

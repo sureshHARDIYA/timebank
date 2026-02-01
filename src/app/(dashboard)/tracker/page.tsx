@@ -91,12 +91,12 @@ export default function TrackerPage() {
 
   useEffect(() => {
     if (!activeTimer) {
-      setElapsed(0);
+      queueMicrotask(() => setElapsed(0));
       return;
     }
     const start = new Date(activeTimer.started_at).getTime();
     const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
-    tick();
+    queueMicrotask(() => tick());
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
   }, [activeTimer]);

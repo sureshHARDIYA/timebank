@@ -16,7 +16,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { Tag, Task } from "@/types/database";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
 const schema = z
@@ -51,15 +51,25 @@ export function ManualTimeForm({
   const [open, setOpen] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
+  const [defaultTimes] = useState(() => {
+    const end = new Date();
+    const start = new Date(end.getTime() - 3600000);
+    return {
+      start_time: start.toISOString().slice(0, 16),
+      end_time: end.toISOString().slice(0, 16),
+    };
+  });
+
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       task_id: "",
       task_name: "",
-      start_time: new Date(Date.now() - 3600000).toISOString().slice(0, 16),
-      end_time: new Date().toISOString().slice(0, 16),
+      start_time: defaultTimes.start_time,
+      end_time: defaultTimes.end_time,
     },
   });
+  const taskIdValue = useWatch({ control: form.control, name: "task_id", defaultValue: "" });
 
   async function onSubmit(data: FormData) {
     const {
@@ -90,8 +100,8 @@ export function ManualTimeForm({
     form.reset({
       task_id: "",
       task_name: "",
-      start_time: new Date(Date.now() - 3600000).toISOString().slice(0, 16),
-      end_time: new Date().toISOString().slice(0, 16),
+      start_time: defaultTimes.start_time,
+      end_time: defaultTimes.end_time,
     });
     setSelectedTagIds([]);
     setOpen(false);
@@ -117,7 +127,7 @@ export function ManualTimeForm({
               <div className="space-y-2">
                 <Label>Task (optional)</Label>
                 <Select
-                  value={form.watch("task_id") || "none"}
+                  value={taskIdValue || "none"}
                   onValueChange={(v) => form.setValue("task_id", v === "none" ? "" : v)}
                 >
                   <SelectTrigger>
