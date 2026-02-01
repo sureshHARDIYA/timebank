@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/utils";
 import type { Client } from "@/types/database";
@@ -60,6 +61,7 @@ export default function ClientsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
 
+  const { data: user } = useUser();
   const { data: clients = [], isLoading } = useClients(search);
 
   const form = useForm<ClientForm>({
@@ -68,9 +70,6 @@ export default function ClientsPage() {
   });
 
   async function onSubmit(data: ClientForm) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user) return;
     if (editing) {
       const { error } = await supabase

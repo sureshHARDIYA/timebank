@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { formatDuration } from "@/lib/utils";
 import type { TimeEntry } from "@/types/database";
@@ -26,13 +27,17 @@ import { CalendarAddTimeModal } from "./add-time-modal";
 
 function useTimeEntriesForRange(start: Date, end: Date) {
   const supabase = createClient();
+  const { data: user } = useUser();
   return useQuery({
-    queryKey: ["calendar-entries", format(start, "yyyy-MM-dd"), format(end, "yyyy-MM-dd")],
+    queryKey: [
+      "calendar-entries",
+      user?.id,
+      format(start, "yyyy-MM-dd"),
+      format(end, "yyyy-MM-dd"),
+    ],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!user?.id) return [];
       const { data, error } = await supabase
         .from("time_entries")
         .select("*, project:projects(id, name)")
@@ -66,13 +71,13 @@ export default function CalendarPage() {
 
   const entriesByDay = useMemo(() => {
     const map: Record<string, (TimeEntry & { project?: { id: string; name: string } })[]> = {};
-    entries.forEach((e) => {
-      if (!e.end_time) return;
+    for (const e of entries) {
+      if (!e.end_time) continue;
       const start = parseISO(e.start_time);
       const dayKey = format(start, "yyyy-MM-dd");
       if (!map[dayKey]) map[dayKey] = [];
       map[dayKey].push(e);
-    });
+    }
     return map;
   }, [entries]);
 

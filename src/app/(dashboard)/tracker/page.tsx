@@ -11,6 +11,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useActiveTimer } from "@/hooks/use-active-timer";
+import { useProjects } from "@/hooks/use-projects";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { stopCurrentTimerIfAny } from "@/lib/timer";
 import { formatDuration } from "@/lib/utils";
@@ -19,26 +22,6 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, Square } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-
-function useProjects() {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ["projects"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id, name")
-        .eq("user_id", user.id)
-        .order("name");
-      if (error) throw error;
-      return data as { id: string; name: string }[];
-    },
-  });
-}
 
 function useProjectTasks(projectId: string | null) {
   const supabase = createClient();
@@ -57,29 +40,10 @@ function useProjectTasks(projectId: string | null) {
   });
 }
 
-function useActiveTimer() {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ["active-timer"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from("active_timers")
-        .select("*, project:projects(id, name)")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
-}
-
 export default function TrackerPage() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { data: user } = useUser();
   const [projectId, setProjectId] = useState("");
   const [taskId, setTaskId] = useState("");
   const [taskName, setTaskName] = useState("");
@@ -102,12 +66,8 @@ export default function TrackerPage() {
   }, [activeTimer]);
 
   async function startTimer() {
-    if (!projectId) return;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-    await stopCurrentTimerIfAny(supabase, queryClient);
+    if (!projectId || !user) return;
+    await stopCurrentTimerIfAny(supabase, queryClient, user.id);
     await supabase.from("active_timers").upsert(
       {
         user_id: user.id,
@@ -122,9 +82,6 @@ export default function TrackerPage() {
   }
 
   async function stopTimer() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user || !activeTimer) return;
     await supabase.from("time_entries").insert({
       user_id: user.id,
@@ -169,7 +126,8 @@ export default function TrackerPage() {
                 href={`/dashboard/${activeTimer.project_id}`}
                 className="text-[#3ECF8E] hover:underline"
               >
-                {(activeTimer as { project?: { name: string } })?.project?.name ?? "—"}
+                {(Array.isArray(activeTimer.project) ? activeTimer.project[0] : activeTimer.project)
+                  ?.name ?? "—"}
               </Link>
             </p>
             <p className="text-sm text-muted-foreground">

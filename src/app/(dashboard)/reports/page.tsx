@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatDuration } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -38,18 +39,16 @@ type ProjectWithTime = {
 
 function useAllProjectsWithTime(enabled: boolean) {
   const supabase = createClient();
+  const { data: user } = useUser();
   return useQuery({
-    queryKey: ["all-projects-with-time"],
-    enabled,
+    queryKey: ["all-projects-with-time", user?.id],
+    enabled: !!enabled && !!user?.id,
     queryFn: async (): Promise<ProjectWithTime[]> => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!user?.id) return [];
       const { data: projects, error: projError } = await supabase
         .from("projects")
         .select("id, name, client_id, clients(id, name, email, hourly_rate_usd)")
-        .eq("user_id", user.id);
+        .eq("user_id", user!.id);
       if (projError) throw projError;
       const { data: entries, error: entError } = await supabase
         .from("time_entries")
@@ -100,15 +99,12 @@ function useAllProjectsWithTime(enabled: boolean) {
 
 function useClientProjectsWithTime(clientId: string | null) {
   const supabase = createClient();
+  const { data: user } = useUser();
   return useQuery({
-    queryKey: ["client-projects-with-time", clientId],
-    enabled: !!clientId,
+    queryKey: ["client-projects-with-time", user?.id, clientId],
+    enabled: !!clientId && !!user?.id,
     queryFn: async (): Promise<ProjectWithTime[]> => {
-      if (!clientId) return [];
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!clientId || !user?.id) return [];
       const { data: projects, error: projError } = await supabase
         .from("projects")
         .select("id, name, client_id, clients(id, name, email, hourly_rate_usd)")

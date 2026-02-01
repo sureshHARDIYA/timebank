@@ -1,5 +1,6 @@
 "use client";
 
+import { GitHubStyleEditor } from "@/components/editor/github-style-editor";
 import { TagMultiSelect } from "@/components/tags/tag-multi-select";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,13 +27,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { formatDuration, formatTaskIdentifierWithProject } from "@/lib/utils";
 import type { Tag } from "@/types/database";
 import type { TimeEntry } from "@/types/database";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, Plus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TaskWithTags } from "./page";
 
 const KANBAN_STATUSES = [
@@ -63,8 +65,11 @@ export function TaskDetailModal({
 }) {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { data: user } = useUser();
   const [name, setName] = useState(task?.name ?? "");
   const [description, setDescription] = useState(task?.description ?? "");
+  const descriptionRef = useRef(description);
+  const editorGetHtmlRef = useRef<(() => string) | null>(null);
   const [status, setStatus] = useState<string>(task?.status ?? "backlog");
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -88,17 +93,22 @@ export function TaskDetailModal({
     },
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only sync when modal opens for this task (task?.id), not on every task field change
   useEffect(() => {
     if (task && open) {
-      setName(task.name);
-      setDescription(task.description ?? "");
-      setStatus((task as { status?: string }).status ?? (task.completed ? "done" : "todo"));
-      setSelectedTagIds((task.task_tags ?? []).map((tt) => tt.tag_id));
-      setShowAddTime(false);
+      const desc = task.description ?? "";
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - 3600000);
-      setAddTimeStart(oneHourAgo.toISOString().slice(0, 16));
-      setAddTimeEnd(now.toISOString().slice(0, 16));
+      queueMicrotask(() => {
+        setName(task.name);
+        setDescription(desc);
+        descriptionRef.current = desc;
+        setStatus((task as { status?: string }).status ?? (task.completed ? "done" : "todo"));
+        setSelectedTagIds((task.task_tags ?? []).map((tt) => tt.tag_id));
+        setShowAddTime(false);
+        setAddTimeStart(oneHourAgo.toISOString().slice(0, 16));
+        setAddTimeEnd(now.toISOString().slice(0, 16));
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only sync when modal opens for this task
   }, [task?.id, open]);
@@ -109,15 +119,27 @@ export function TaskDetailModal({
   async function save() {
     if (!task) return;
     setSaving(true);
-    await supabase
+    // Read from Lexical editor when available (e.g. on dialog close) so we persist the latest content
+    const fromEditor = editorGetHtmlRef.current?.();
+    const latestDescription = typeof fromEditor === "string" ? fromEditor : descriptionRef.current;
+    const descriptionToSave =
+      (latestDescription ?? "").trim().length > 0 ? (latestDescription ?? "").trim() : null;
+    const { error: updateError } = await supabase
       .from("tasks")
       .update({
         name: name.trim() || task.name,
-        description: description.trim() || null,
+        description: descriptionToSave,
         status: currentStatus as "backlog" | "todo" | "progress" | "done",
         completed: currentStatus === "done",
       })
-      .eq("id", task.id);
+      .eq("id", task.id)
+      .select("id, description")
+      .single();
+    if (updateError) {
+      console.error("Task update failed:", updateError);
+      setSaving(false);
+      return;
+    }
     try {
       await supabase.from("task_tags").delete().eq("task_id", task.id);
       if (selectedTagIds.length > 0) {
@@ -139,14 +161,10 @@ export function TaskDetailModal({
   }
 
   async function handleAddManualTime() {
-    if (!task) return;
+    if (!task || !user) return;
     const start = new Date(addTimeStart);
     const end = new Date(addTimeEnd);
     if (end <= start) return;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
     setAddingTime(true);
     const { data: entry, error } = await supabase
       .from("time_entries")
@@ -182,7 +200,15 @@ export function TaskDetailModal({
   const identifier = formatTaskIdentifierWithProject(taskNumber, projectName);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (!o) {
+          save();
+          onClose();
+        }
+      }}
+    >
       <DialogContent className="max-w-lg">
         <div className="relative">
           <DialogHeader>
@@ -206,12 +232,21 @@ export function TaskDetailModal({
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              <GitHubStyleEditor
+                editorKey={task?.id ?? "task-desc"}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onBlur={save}
+                getHtmlRef={editorGetHtmlRef}
+                onChange={(html) => {
+                  descriptionRef.current = html;
+                  setDescription(html);
+                }}
+                onBlur={(html) => {
+                  descriptionRef.current = html;
+                  setDescription(html);
+                  save();
+                }}
                 placeholder="Optional description"
+                minHeight="120px"
               />
             </div>
             <div className="space-y-2">

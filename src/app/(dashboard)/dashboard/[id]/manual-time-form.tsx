@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import type { Tag, Task } from "@/types/database";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,6 +49,7 @@ export function ManualTimeForm({
   onSubmitted: () => void;
 }) {
   const supabase = createClient();
+  const { data: user } = useUser();
   const [open, setOpen] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
@@ -72,9 +74,6 @@ export function ManualTimeForm({
   const taskIdValue = useWatch({ control: form.control, name: "task_id", defaultValue: "" });
 
   async function onSubmit(data: FormData) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user) return;
     const { data: entry, error } = await supabase
       .from("time_entries")

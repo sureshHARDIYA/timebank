@@ -27,6 +27,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useTags } from "@/hooks/use-tags";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { stopCurrentTimerIfAny } from "@/lib/timer";
 import { formatDuration, formatTaskIdentifierWithProject } from "@/lib/utils";
@@ -67,7 +69,11 @@ function useProject(id: string | null) {
 
 export type TaskWithTags = Task & {
   task_tags?: { tag_id: string; tags: Tag | null }[];
-  assignee?: { id: string; full_name: string | null; email: string | null } | null;
+  assignee?: {
+    id: string;
+    full_name: string | null;
+    email: string | null;
+  } | null;
 };
 
 function useProjectTasks(projectId: string | null) {
@@ -97,15 +103,17 @@ function useProjectTasks(projectId: string | null) {
       const tagMap = new Map<string, Tag>();
       if (tagIds.length > 0) {
         const { data: tagRows } = await supabase.from("tags").select("*").in("id", tagIds);
-        (tagRows ?? []).forEach((t) => tagMap.set(t.id, t as Tag));
+        for (const t of tagRows ?? []) {
+          tagMap.set(t.id, t as Tag);
+        }
       }
 
       const ttByTask = new Map<string, { tag_id: string; tags: Tag | null }[]>();
-      taskTagRows.forEach((r) => {
+      for (const r of taskTagRows) {
         const list = ttByTask.get(r.task_id) ?? [];
         list.push({ tag_id: r.tag_id, tags: tagMap.get(r.tag_id) ?? null });
         ttByTask.set(r.task_id, list);
-      });
+      }
 
       const assigneeIds = Array.from(
         new Set(
@@ -121,7 +129,9 @@ function useProjectTasks(projectId: string | null) {
           .from("profiles")
           .select("id, full_name, email")
           .in("id", assigneeIds);
-        (profiles ?? []).forEach((p) => assigneeMap.set(p.id, p));
+        for (const p of profiles ?? []) {
+          assigneeMap.set(p.id, p);
+        }
       }
 
       return tasks.map((t) => ({
@@ -160,40 +170,23 @@ function useProjectTimeEntries(projectId: string | null) {
       const tagMap = new Map<string, Tag>();
       if (tagIds.length > 0) {
         const { data: tagRows } = await supabase.from("tags").select("*").in("id", tagIds);
-        (tagRows ?? []).forEach((t) => tagMap.set(t.id, t as Tag));
+        for (const t of tagRows ?? []) {
+          tagMap.set(t.id, t as Tag);
+        }
       }
       const entryTagsMap = new Map<string, Tag[]>();
-      (links ?? []).forEach((l: { time_entry_id: string; tag_id: string }) => {
-        const tag = tagMap.get(l.tag_id);
-        if (!tag) return;
-        const arr = entryTagsMap.get(l.time_entry_id) ?? [];
+      for (const l of links ?? []) {
+        const link = l as { time_entry_id: string; tag_id: string };
+        const tag = tagMap.get(link.tag_id);
+        if (!tag) continue;
+        const arr = entryTagsMap.get(link.time_entry_id) ?? [];
         arr.push(tag);
-        entryTagsMap.set(l.time_entry_id, arr);
-      });
+        entryTagsMap.set(link.time_entry_id, arr);
+      }
       return list.map((e) => ({
         ...e,
         entryTags: entryTagsMap.get(e.id) ?? [],
       })) as TimeEntryWithTags[];
-    },
-  });
-}
-
-function useUserTags() {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ["tags"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("tags")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("name");
-      if (error) throw error;
-      return data as import("@/types/database").Tag[];
     },
   });
 }
@@ -204,10 +197,11 @@ export default function ProjectDetailPage() {
   const queryClient = useQueryClient();
   const supabase = createClient();
 
+  const { data: user } = useUser();
   const { data: project, isLoading } = useProject(id);
   const { data: tasks = [] } = useProjectTasks(id);
   const { data: timeEntries = [] } = useProjectTimeEntries(id);
-  const { data: tags = [] } = useUserTags();
+  const { data: tags = [] } = useTags();
   const [editingEntry, setEditingEntry] = useState<TimeEntry | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<TaskWithTags | null>(null);
@@ -254,13 +248,10 @@ export default function ProjectDetailPage() {
   }
 
   async function startTimerForTask(taskId: string, taskName: string) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user) return;
     const task = tasks.find((t) => t.id === taskId);
     const tagIds = (task as TaskWithTags)?.task_tags?.map((tt) => tt.tag_id) ?? [];
-    await stopCurrentTimerIfAny(supabase, queryClient);
+    await stopCurrentTimerIfAny(supabase, queryClient, user?.id);
     await supabase.from("active_timers").upsert(
       {
         user_id: user.id,
@@ -483,7 +474,9 @@ export default function ProjectDetailPage() {
                     onDelete={async () => {
                       if (!confirm("Delete this time entry? This cannot be undone.")) return;
                       await supabase.from("time_entries").delete().eq("id", entry.id);
-                      queryClient.invalidateQueries({ queryKey: ["time-entries", id] });
+                      queryClient.invalidateQueries({
+                        queryKey: ["time-entries", id],
+                      });
                     }}
                   />
                 ))}
@@ -620,15 +613,13 @@ function KanbanCard({
   );
 
   return (
-    <div
+    <button
+      type="button"
       draggable
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDrop={onDrop}
       onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && onClick()}
       className="w-full cursor-grab active:cursor-grabbing rounded-lg border bg-card p-3 text-left text-sm transition-colors hover:bg-muted/50 hover:border-[#3ECF8E]/50"
     >
       <span className="text-xs font-medium text-muted-foreground">{identifier}</span>
@@ -657,7 +648,7 @@ function KanbanCard({
           )}
         </div>
       )}
-    </div>
+    </button>
   );
 }
 

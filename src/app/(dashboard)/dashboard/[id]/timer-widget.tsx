@@ -11,33 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useActiveTimer } from "@/hooks/use-active-timer";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { stopCurrentTimerIfAny } from "@/lib/timer";
 import { formatDuration } from "@/lib/utils";
 import type { Tag, Task } from "@/types/database";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Play, Square } from "lucide-react";
 import { useEffect, useState } from "react";
-
-function useActiveTimer() {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ["active-timer"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return null;
-      const { data, error } = await supabase
-        .from("active_timers")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
-}
 
 export function TimerWidget({
   projectId,
@@ -53,6 +35,7 @@ export function TimerWidget({
 }) {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { data: user } = useUser();
   const { data: activeTimer, isLoading } = useActiveTimer();
   const [taskId, setTaskId] = useState<string>("");
   const [taskName, setTaskName] = useState("");
@@ -86,11 +69,8 @@ export function TimerWidget({
   }, [activeTimer]);
 
   async function startTimer() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user) return;
-    await stopCurrentTimerIfAny(supabase, queryClient);
+    await stopCurrentTimerIfAny(supabase, queryClient, user.id);
     await supabase.from("active_timers").upsert(
       {
         user_id: user.id,
@@ -106,9 +86,6 @@ export function TimerWidget({
   }
 
   async function stopTimer() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user || !activeTimer) return;
     const tagIds = (activeTimer as { tag_ids?: string[] }).tag_ids ?? [];
     const { data: entry, error } = await supabase

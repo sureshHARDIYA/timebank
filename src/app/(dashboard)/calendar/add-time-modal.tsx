@@ -18,31 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useProjects } from "@/hooks/use-projects";
+import { useTags } from "@/hooks/use-tags";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
-import type { Tag } from "@/types/database";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, setHours, setMinutes } from "date-fns";
 import { useEffect, useState } from "react";
-
-function useProjects() {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ["projects"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("projects")
-        .select("id, name")
-        .eq("user_id", user.id)
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as { id: string; name: string }[];
-    },
-  });
-}
 
 function useProjectTasks(projectId: string | null) {
   const supabase = createClient();
@@ -62,26 +44,6 @@ function useProjectTasks(projectId: string | null) {
   });
 }
 
-function useUserTags() {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ["tags"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("tags")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("name");
-      if (error) throw error;
-      return (data ?? []) as Tag[];
-    },
-  });
-}
-
 export function CalendarAddTimeModal({
   selectedDate,
   open,
@@ -95,6 +57,7 @@ export function CalendarAddTimeModal({
 }) {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { data: user } = useUser();
   const { data: projects = [] } = useProjects();
   const [projectId, setProjectId] = useState("");
   const [taskId, setTaskId] = useState("");
@@ -105,7 +68,7 @@ export function CalendarAddTimeModal({
   const [submitting, setSubmitting] = useState(false);
 
   const { data: tasks = [] } = useProjectTasks(projectId || null);
-  const { data: tags = [] } = useUserTags();
+  const { data: tags = [] } = useTags({ enabled: open });
 
   useEffect(() => {
     if (!selectedDate || !open) return;
@@ -129,9 +92,6 @@ export function CalendarAddTimeModal({
   }, [open]);
 
   async function handleSubmit() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user || !projectId || !startStr || !endStr) return;
     const start = new Date(startStr);
     const end = new Date(endStr);

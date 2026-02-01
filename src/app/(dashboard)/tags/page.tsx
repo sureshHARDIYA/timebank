@@ -13,51 +13,29 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTags } from "@/hooks/use-tags";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Tag as TagType } from "@/types/database";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { useState } from "react";
-
-function useUserTags() {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ["tags"],
-    queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("tags")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("name");
-      if (error) throw error;
-      return data as TagType[];
-    },
-  });
-}
 
 export default function TagsPage() {
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { data: user } = useUser();
+  const { data: tags = [], isLoading } = useTags();
   const [createOpen, setCreateOpen] = useState(false);
   const [editTag, setEditTag] = useState<TagType | null>(null);
   const [name, setName] = useState("");
   const [color, setColor] = useState("#3ECF8E");
   const [error, setError] = useState<string | null>(null);
 
-  const { data: tags = [], isLoading } = useUserTags();
-
   async function createTag() {
-    if (!name.trim()) return;
+    if (!name.trim() || !user) return;
     setError(null);
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
     const { error: err } = await supabase.from("tags").insert({
       user_id: user.id,
       name: name.trim(),

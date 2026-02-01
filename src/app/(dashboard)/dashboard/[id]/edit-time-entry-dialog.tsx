@@ -72,6 +72,7 @@ export function EditTimeEntryDialog({
     },
   });
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: only sync when entry or open changes; form.reset and supabase are stable
   useEffect(() => {
     if (!entry || !open) return;
     form.reset({

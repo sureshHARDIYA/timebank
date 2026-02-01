@@ -18,13 +18,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useProjects } from "@/hooks/use-projects";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
-import type { Client, Project } from "@/types/database";
+import type { Client } from "@/types/database";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Filter, LayoutGrid, List, MoreVertical, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import React, { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -34,25 +36,6 @@ const newProjectSchema = z.object({
 });
 
 type NewProjectForm = z.infer<typeof newProjectSchema>;
-
-function useProjects(search?: string) {
-  const supabase = createClient();
-  return useQuery({
-    queryKey: ["projects", search],
-    queryFn: async () => {
-      let q = supabase
-        .from("projects")
-        .select("*, clients(id, name, email, hourly_rate_usd)")
-        .order("created_at", { ascending: false });
-      if (search?.trim()) {
-        q = q.ilike("name", `%${search.trim()}%`);
-      }
-      const { data, error } = await q;
-      if (error) throw error;
-      return data as (Project & { clients: Client | null })[];
-    },
-  });
-}
 
 function useClients() {
   const supabase = createClient();
@@ -70,23 +53,25 @@ export default function DashboardPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { data: user } = useUser();
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [openNew, setOpenNew] = useState(false);
 
-  const { data: projects = [], isLoading } = useProjects(search);
+  const { data: projects = [], isLoading } = useProjects({ search });
   const { data: clients = [] } = useClients();
 
   const form = useForm<NewProjectForm>({
     resolver: zodResolver(newProjectSchema),
     defaultValues: { name: "", client_id: "" },
   });
-  const clientIdValue = useWatch({ control: form.control, name: "client_id", defaultValue: "" });
+  const clientIdValue = useWatch({
+    control: form.control,
+    name: "client_id",
+    defaultValue: "",
+  });
 
   async function onCreateProject(data: NewProjectForm) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user) return;
     const { error } = await supabase.from("projects").insert({
       user_id: user.id,
@@ -218,8 +203,13 @@ export default function DashboardPage() {
                 {projects.map((project) => (
                   <tr
                     key={project.id}
+                    tabIndex={0}
                     className="cursor-pointer border-b transition-colors hover:bg-muted/30"
                     onClick={() => router.push(`/dashboard/${project.id}`)}
+                    onKeyDown={(e) =>
+                      (e.key === "Enter" || e.key === " ") &&
+                      router.push(`/dashboard/${project.id}`)
+                    }
                   >
                     <td className="px-4 py-3">
                       <div className="font-medium">{project.name}</div>
@@ -231,7 +221,11 @@ export default function DashboardPage() {
                     <td className="px-4 py-3 text-muted-foreground">
                       {new Date(project.created_at).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <td
+                      className="px-4 py-3"
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
+                    >
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -283,11 +277,12 @@ export default function DashboardPage() {
                   ))}
                 </SelectContent>
               </Select>
-              {form.formState.errors.client_id && (
-                <p className="text-sm text-destructive">
-                  {form.formState.errors.client_id.message}
-                </p>
-              )}
+              {form.formState.errors.client_id &&
+                React.createElement(
+                  "p",
+                  { className: "text-sm text-destructive" },
+                  form.formState.errors.client_id.message
+                )}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpenNew(false)}>

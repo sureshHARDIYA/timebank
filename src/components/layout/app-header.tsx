@@ -8,29 +8,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { LogOut, Play, Search, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ActiveTimerBadge } from "./active-timer-badge";
 import { QuickStartTimerModal } from "./quick-start-timer-modal";
 
 export function AppHeader() {
   const router = useRouter();
   const supabase = createClient();
-  const [user, setUser] = useState<{
-    email?: string;
-    user_metadata?: { full_name?: string };
-  } | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => setUser(user ?? null));
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => setUser(session?.user ?? null));
-    return () => subscription.unsubscribe();
-  }, [supabase.auth]);
-
+  const { data: user } = useUser();
   const displayName = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "User";
   const [quickStartOpen, setQuickStartOpen] = useState(false);
 

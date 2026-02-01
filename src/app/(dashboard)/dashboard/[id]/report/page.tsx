@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatDuration } from "@/lib/utils";
 import type { Client, Invoice, TimeEntry } from "@/types/database";
@@ -121,6 +122,7 @@ export default function ProjectReportPage() {
   const id = params.id as string;
   const queryClient = useQueryClient();
   const supabase = createClient();
+  const { data: user } = useUser();
 
   const [rangeStart, setRangeStart] = useState(() =>
     format(startOfDay(defaultRangeStart), "yyyy-MM-dd")
@@ -230,9 +232,6 @@ export default function ProjectReportPage() {
     .sort((a, b) => b.minutes - a.minutes);
 
   async function handleGenerateInvoice() {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user || !project) return;
     setGenerating(true);
     const { error } = await supabase.from("invoices").insert({

@@ -15,20 +15,20 @@ type ActiveTimerRow = {
  * Stops the current active timer for the user if one exists: saves it as a time
  * entry (when it has a project), then deletes it. Call before starting a new
  * timer so only one timer runs at a time.
+ * Pass userId from useUser() to avoid an extra auth.getUser() call.
  */
 export async function stopCurrentTimerIfAny(
   supabase: SupabaseClient,
-  queryClient: QueryClient
+  queryClient: QueryClient,
+  userId?: string | null
 ): Promise<void> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return;
+  const id = userId ?? (await supabase.auth.getUser().then((r) => r.data.user?.id ?? null));
+  if (!id) return;
 
   const { data: current } = await supabase
     .from("active_timers")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", id)
     .maybeSingle();
 
   if (!current) return;
@@ -40,7 +40,7 @@ export async function stopCurrentTimerIfAny(
     const { data: entry } = await supabase
       .from("time_entries")
       .insert({
-        user_id: user.id,
+        user_id: id,
         project_id: timer.project_id,
         task_id: timer.task_id ?? null,
         task_name: timer.task_name ?? null,
@@ -57,6 +57,6 @@ export async function stopCurrentTimerIfAny(
     queryClient.invalidateQueries({ queryKey: ["time-entries", timer.project_id] });
   }
 
-  await supabase.from("active_timers").delete().eq("user_id", user.id);
+  await supabase.from("active_timers").delete().eq("user_id", id);
   queryClient.invalidateQueries({ queryKey: ["active-timer"] });
 }

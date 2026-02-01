@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatDuration } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
@@ -42,13 +43,12 @@ function useClients() {
 
 function useProjects(clientId: string | null) {
   const supabase = createClient();
+  const { data: user } = useUser();
   return useQuery({
-    queryKey: ["projects-for-stats", clientId],
+    queryKey: ["projects-for-stats", user?.id, clientId],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return [];
+      if (!user?.id) return [];
       let q = supabase
         .from("projects")
         .select("id, name, client_id, clients(id, hourly_rate_usd)")
@@ -73,17 +73,16 @@ type EarningsByPeriod = { label: string; earnings: number; minutes: number };
 
 function useEarningsStats(clientId: string | null, projectId: string | null, period: Period) {
   const supabase = createClient();
+  const { data: user } = useUser();
   return useQuery({
-    queryKey: ["earnings-stats", clientId, projectId, period],
+    queryKey: ["earnings-stats", user?.id, clientId, projectId, period],
+    enabled: !!user?.id,
     queryFn: async (): Promise<{
       totalEarnings: number;
       totalMinutes: number;
       byPeriod: EarningsByPeriod[];
     }> => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return { totalEarnings: 0, totalMinutes: 0, byPeriod: [] };
+      if (!user?.id) return { totalEarnings: 0, totalMinutes: 0, byPeriod: [] };
 
       const { data: projects, error: pErr } = await supabase
         .from("projects")
@@ -159,14 +158,16 @@ function useEarningsStats(clientId: string | null, projectId: string | null, per
       };
 
       const byPeriodMap = new Map<string, { earnings: number; minutes: number }>();
-      buckets.forEach((b) => byPeriodMap.set(b.label, { earnings: 0, minutes: 0 }));
+      for (const b of buckets) {
+        byPeriodMap.set(b.label, { earnings: 0, minutes: 0 });
+      }
 
       let totalEarnings = 0;
       let totalMinutes = 0;
 
-      entries.forEach((e) => {
+      for (const e of entries) {
         const proj = projectMap.get(e.project_id);
-        if (!proj) return;
+        if (!proj) continue;
         const start = new Date(e.start_time).getTime();
         const end = new Date(e.end_time!).getTime();
         const mins = (end - start) / (60 * 1000);
@@ -179,7 +180,7 @@ function useEarningsStats(clientId: string | null, projectId: string | null, per
           cur.earnings += earnings;
           cur.minutes += mins;
         }
-      });
+      }
 
       const byPeriod: EarningsByPeriod[] = buckets.map((b) => {
         const cur = byPeriodMap.get(b.label)!;

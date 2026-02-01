@@ -1,12 +1,14 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
+import { useActiveTimer } from "@/hooks/use-active-timer";
+import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { formatDurationWithSeconds } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { Clock, Square } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 const DEFAULT_TITLE = "Time Track";
 
@@ -19,59 +21,35 @@ const DEFAULT_TITLE = "Time Track";
 export function ActiveTimerBadge() {
   const supabase = createClient();
   const queryClient = useQueryClient();
+  const { data: user } = useUser();
+  const { data: activeTimerRow } = useActiveTimer({ refetchInterval: 5000 });
   const [elapsed, setElapsed] = useState(0);
   const [stopping, setStopping] = useState(false);
-  const [timer, setTimer] = useState<{
-    id: string;
-    project_id: string | null;
-    task_id: string | null;
-    task_name: string | null;
-    started_at: string;
-    project?: { name: string };
-    tag_ids?: string[];
-  } | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase
-        .from("active_timers")
-        .select("id, project_id, task_id, started_at, task_name, project:projects(name)")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (!data) {
-        setTimer(null);
-        return;
-      }
-      const project = Array.isArray(data.project) ? data.project[0] : data.project;
-      setTimer({
-        id: data.id,
-        project_id: data.project_id,
-        task_id: data.task_id,
-        task_name: data.task_name,
-        started_at: data.started_at,
-        ...(project && { project: { name: project.name } }),
-      });
-    }
-    load();
-    const interval = setInterval(load, 5000);
-    return () => clearInterval(interval);
-  }, [supabase]);
+  const timer = useMemo(
+    () =>
+      activeTimerRow
+        ? {
+            id: activeTimerRow.id,
+            project_id: activeTimerRow.project_id,
+            task_id: activeTimerRow.task_id,
+            task_name: activeTimerRow.task_name,
+            started_at: activeTimerRow.started_at,
+            project: Array.isArray(activeTimerRow.project)
+              ? activeTimerRow.project[0]
+              : activeTimerRow.project,
+            tag_ids: (activeTimerRow as { tag_ids?: string[] }).tag_ids,
+          }
+        : null,
+    [activeTimerRow]
+  );
 
   async function stopTimer(e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
-    if (!timer) return;
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!timer || !user) return;
     setStopping(true);
-    const activeTimer = timer as { tag_ids?: string[] };
-    const tagIds = activeTimer.tag_ids ?? [];
+    const tagIds = timer.tag_ids ?? [];
     if (timer.project_id) {
       const { data: entry } = await supabase
         .from("time_entries")
@@ -94,7 +72,6 @@ export function ActiveTimerBadge() {
     }
     await supabase.from("active_timers").delete().eq("user_id", user.id);
     queryClient.invalidateQueries({ queryKey: ["active-timer"] });
-    setTimer(null);
     setStopping(false);
   }
 
@@ -110,7 +87,7 @@ export function ActiveTimerBadge() {
     return () => clearInterval(interval);
   }, [timer]);
 
-  const projectName = (timer as { project?: { name: string } })?.project?.name ?? "Project";
+  const projectName = timer?.project?.name ?? "Project";
   const timerLabel = timer ? formatDurationWithSeconds(elapsed) : "";
   const savedTitleRef = useRef<string>(DEFAULT_TITLE);
 
