@@ -7,8 +7,7 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Clock } from "lucide-react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -22,8 +21,10 @@ type FormData = z.infer<typeof schema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
   const [error, setError] = useState<string | null>(null);
+  const pendingFromUrl = searchParams.get("pending") === "1";
 
   const {
     register,
@@ -35,9 +36,19 @@ export default function LoginPage() {
 
   async function onSubmit(data: FormData) {
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword(data);
-    if (error) {
-      setError(error.message);
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword(data);
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+    if (!signInData.user) return;
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_approved")
+      .eq("id", signInData.user.id)
+      .single();
+    if (profile?.is_approved !== true) {
+      setError("Your account is pending approval. You’ll be able to sign in once approved.");
       return;
     }
     router.push("/dashboard");
@@ -54,6 +65,11 @@ export default function LoginPage() {
         <CardDescription>Sign in to your account</CardDescription>
       </CardHeader>
       <CardContent>
+        {pendingFromUrl && (
+          <div className="mb-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+            Your account is pending approval. Contact the admin to get access.
+          </div>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
@@ -73,12 +89,6 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Signing in..." : "Sign in"}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{" "}
-            <Link href="/signup" className="text-[#3ECF8E] hover:underline">
-              Sign up
-            </Link>
-          </p>
         </form>
       </CardContent>
     </Card>

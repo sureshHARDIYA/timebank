@@ -9,6 +9,7 @@ export interface Database {
           email: string | null;
           full_name: string | null;
           avatar_url: string | null;
+          is_approved: boolean;
           updated_at: string;
         };
         Insert: {
@@ -16,6 +17,7 @@ export interface Database {
           email?: string | null;
           full_name?: string | null;
           avatar_url?: string | null;
+          is_approved?: boolean;
           updated_at?: string;
         };
         Update: {
@@ -23,6 +25,7 @@ export interface Database {
           email?: string | null;
           full_name?: string | null;
           avatar_url?: string | null;
+          is_approved?: boolean;
           updated_at?: string;
         };
       };
