@@ -13,6 +13,32 @@ import { TimeEntryRow } from "./time-entry-row";
 type SortKey = "task" | "start" | "end" | "duration";
 type SortDir = "asc" | "desc";
 
+function SortButton({
+  columnKey,
+  label,
+  sort,
+  onToggleSort,
+}: {
+  columnKey: SortKey;
+  label: string;
+  sort: { key: SortKey; dir: SortDir };
+  onToggleSort: (key: SortKey) => void;
+}) {
+  const isActive = sort.key === columnKey;
+  const Icon = isActive ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="-ml-2 h-8 font-medium"
+      onClick={() => onToggleSort(columnKey)}
+    >
+      {label}
+      <Icon className={isActive ? "ml-1.5 h-4 w-4" : "ml-1.5 h-4 w-4 opacity-50"} />
+    </Button>
+  );
+}
+
 export function ProjectTimeEntriesCard({
   entries,
   tasks,
@@ -62,28 +88,6 @@ export function ProjectTimeEntriesCard({
     })
     .slice(0, 20);
 
-  function SortButton({
-    columnKey,
-    label,
-  }: {
-    columnKey: SortKey;
-    label: string;
-  }) {
-    const isActive = sort.key === columnKey;
-    const Icon = isActive ? (sort.dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="-ml-2 h-8 font-medium"
-        onClick={() => toggleSort(columnKey)}
-      >
-        {label}
-        <Icon className={isActive ? "ml-1.5 h-4 w-4" : "ml-1.5 h-4 w-4 opacity-50"} />
-      </Button>
-    );
-  }
-
   return (
     <Card>
       <CardHeader>
@@ -132,16 +136,31 @@ export function ProjectTimeEntriesCard({
               <TableRow className="hover:bg-transparent">
                 <TableHead className="w-12">Type</TableHead>
                 <TableHead>
-                  <SortButton columnKey="task" label="Task / Description" />
+                  <SortButton
+                    columnKey="task"
+                    label="Task / Description"
+                    sort={sort}
+                    onToggleSort={toggleSort}
+                  />
                 </TableHead>
                 <TableHead>
-                  <SortButton columnKey="start" label="Start" />
+                  <SortButton
+                    columnKey="start"
+                    label="Start"
+                    sort={sort}
+                    onToggleSort={toggleSort}
+                  />
                 </TableHead>
                 <TableHead>
-                  <SortButton columnKey="end" label="End" />
+                  <SortButton columnKey="end" label="End" sort={sort} onToggleSort={toggleSort} />
                 </TableHead>
                 <TableHead>
-                  <SortButton columnKey="duration" label="Duration" />
+                  <SortButton
+                    columnKey="duration"
+                    label="Duration"
+                    sort={sort}
+                    onToggleSort={toggleSort}
+                  />
                 </TableHead>
                 <TableHead className="w-[140px]">Tags</TableHead>
                 <TableHead className="w-10" />

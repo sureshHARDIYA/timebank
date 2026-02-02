@@ -132,6 +132,11 @@ export default function ProjectReportPage() {
   const [activeTab, setActiveTab] = useState("report");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [invoiceToDelete, setInvoiceToDelete] = useState<Invoice | null>(null);
+  const [invoiceToEmail, setInvoiceToEmail] = useState<Invoice | null>(null);
+  const [emailClient, setEmailClient] = useState("");
+  const [emailExtra, setEmailExtra] = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailError, setEmailError] = useState<string | null>(null);
 
   const { data: project, isLoading } = useProject(id);
   const { data: entries = [] } = useTimeEntries(id);
@@ -275,17 +280,52 @@ export default function ProjectReportPage() {
     if (!error) queryClient.invalidateQueries({ queryKey: ["invoices", id] });
   }
 
-  function handleEmailForInvoice(inv: Invoice) {
-    const subject = encodeURIComponent(
-      `Invoice: ${project?.name ?? "Project"} (${inv.period_start} – ${inv.period_end})`
-    );
-    const body = encodeURIComponent(
-      `Project: ${project?.name}\nPeriod: ${inv.period_start} to ${inv.period_end}\nTotal time: ${formatDuration(Math.round(inv.total_minutes))}\nTotal amount: ${formatCurrency(inv.amount_usd)}\n\nThank you.`
-    );
-    const url = `mailto:${client?.email ?? ""}?subject=${subject}&body=${body}`;
-    const link = document.createElement("a");
-    link.href = url;
-    link.click();
+  function openEmailModal(inv: Invoice) {
+    setInvoiceToEmail(inv);
+    setEmailClient(client?.email ?? "");
+    setEmailExtra("");
+    setEmailError(null);
+  }
+
+  async function sendInvoiceEmail() {
+    if (!invoiceToEmail) return;
+    const primary = emailClient.trim();
+    const extra = emailExtra
+      .split(/[\s,;]+/)
+      .map((e) => e.trim())
+      .filter(Boolean);
+    const to = primary ? [primary, ...extra] : extra;
+    if (to.length === 0) {
+      setEmailError("Enter at least one email address.");
+      return;
+    }
+    setSendingEmail(true);
+    setEmailError(null);
+    try {
+      const res = await fetch("/api/send-invoice-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          invoiceId: invoiceToEmail.id,
+          projectId: id,
+          to,
+        }),
+      });
+      const data = (await res.json()) as { error?: string; success?: boolean };
+      if (!res.ok || data.error) {
+        setEmailError(data.error ?? "Failed to send email.");
+        setSendingEmail(false);
+        return;
+      }
+      queryClient.invalidateQueries({ queryKey: ["invoices", id] });
+      setInvoiceToEmail(null);
+      setEmailClient("");
+      setEmailExtra("");
+    } catch (e) {
+      setEmailError(e instanceof Error ? e.message : "Failed to send email.");
+    } finally {
+      setSendingEmail(false);
+    }
   }
 
   function handleDownloadForInvoice(inv: Invoice) {
@@ -531,8 +571,7 @@ export default function ProjectReportPage() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => handleEmailForInvoice(inv)}
-                              disabled={!client?.email}
+                              onClick={() => openEmailModal(inv)}
                               title="Email bill to client"
                             >
                               <Mail className="h-3.5 w-3.5" />
@@ -599,6 +638,71 @@ export default function ProjectReportPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={!!invoiceToEmail}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInvoiceToEmail(null);
+            setEmailError(null);
+          }
+        }}
+      >
+        <DialogContent
+          title="Email invoice to client"
+          description={
+            invoiceToEmail
+              ? `Send invoice for ${invoiceToEmail.period_start} – ${invoiceToEmail.period_end} (${formatCurrency(invoiceToEmail.amount_usd)}) to the addresses below.`
+              : ""
+          }
+        >
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="email-client">Client email</Label>
+              <Input
+                id="email-client"
+                type="email"
+                placeholder="client@example.com"
+                value={emailClient}
+                onChange={(e) => setEmailClient(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="email-extra">Additional recipients (comma- or space-separated)</Label>
+              <Input
+                id="email-extra"
+                type="text"
+                placeholder="other@example.com, cc@example.com"
+                value={emailExtra}
+                onChange={(e) => setEmailExtra(e.target.value)}
+              />
+            </div>
+            {emailError && (
+              <p className="text-sm text-destructive" role="alert">
+                {emailError}
+              </p>
+            )}
+          </div>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setInvoiceToEmail(null);
+                setEmailError(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-[#3ECF8E] hover:bg-[#2EB67D]"
+              onClick={sendInvoiceEmail}
+              disabled={sendingEmail}
+            >
+              {sendingEmail ? "Sending…" : "Send email"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!invoiceToDelete}
