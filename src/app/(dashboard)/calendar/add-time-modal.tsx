@@ -106,6 +106,7 @@ export function CalendarAddTimeModal({
         task_name: taskName.trim() || null,
         start_time: start.toISOString(),
         end_time: end.toISOString(),
+        source: "manual",
       })
       .select("id")
       .single();

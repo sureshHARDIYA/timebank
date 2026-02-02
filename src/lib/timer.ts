@@ -46,6 +46,7 @@ export async function stopCurrentTimerIfAny(
         task_name: timer.task_name ?? null,
         start_time: timer.started_at,
         end_time: new Date().toISOString(),
+        source: "automatic",
       })
       .select("id")
       .single();

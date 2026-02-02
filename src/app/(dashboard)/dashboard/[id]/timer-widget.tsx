@@ -97,6 +97,7 @@ export function TimerWidget({
         task_name: activeTimer.task_name,
         start_time: activeTimer.started_at,
         end_time: new Date().toISOString(),
+        source: "automatic",
       })
       .select("id")
       .single();

@@ -90,6 +90,7 @@ export default function TrackerPage() {
       task_name: activeTimer.task_name,
       start_time: activeTimer.started_at,
       end_time: new Date().toISOString(),
+      source: "automatic",
     });
     await supabase.from("active_timers").delete().eq("user_id", user.id);
     queryClient.invalidateQueries({ queryKey: ["active-timer"] });

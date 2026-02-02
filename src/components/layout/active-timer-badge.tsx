@@ -22,7 +22,7 @@ export function ActiveTimerBadge() {
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { data: user } = useUser();
-  const { data: activeTimerRow } = useActiveTimer({ refetchInterval: 5000 });
+  const { data: activeTimerRow } = useActiveTimer();
   const [elapsed, setElapsed] = useState(0);
   const [stopping, setStopping] = useState(false);
 
@@ -60,6 +60,7 @@ export function ActiveTimerBadge() {
           task_name: timer.task_name ?? null,
           start_time: timer.started_at,
           end_time: new Date().toISOString(),
+          source: "automatic",
         })
         .select("id")
         .single();

@@ -84,6 +84,7 @@ export function ManualTimeForm({
         task_name: data.task_name || null,
         start_time: new Date(data.start_time).toISOString(),
         end_time: new Date(data.end_time).toISOString(),
+        source: "manual",
       })
       .select("id")
       .single();

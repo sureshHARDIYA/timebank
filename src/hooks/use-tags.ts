@@ -13,6 +13,7 @@ export function useTags(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: ["tags", user?.id],
     enabled: !!user?.id && enabled,
+    staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       if (!user?.id) return [];
       const { data, error } = await supabase

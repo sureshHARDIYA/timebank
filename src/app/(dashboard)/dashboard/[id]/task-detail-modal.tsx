@@ -31,11 +31,11 @@ import { useUser } from "@/hooks/use-user";
 import { createClient } from "@/lib/supabase/client";
 import { formatDuration, formatTaskIdentifierWithProject } from "@/lib/utils";
 import type { Tag } from "@/types/database";
-import type { TimeEntry } from "@/types/database";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Play, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import type { TaskWithTags } from "./page";
+import type { TaskWithTags, TimeEntryWithTags } from "./hooks";
+import { EntrySourceBadge } from "./time-entry-row";
 
 const KANBAN_STATUSES = [
   { value: "backlog", label: "Backlog" },
@@ -49,6 +49,7 @@ export function TaskDetailModal({
   projectId,
   projectName,
   tags,
+  projectTimeEntries,
   onStartTimer,
   onUpdated,
   onClose,
@@ -58,6 +59,7 @@ export function TaskDetailModal({
   projectId: string;
   projectName: string;
   tags: Tag[];
+  projectTimeEntries: TimeEntryWithTags[];
   onStartTimer: (taskId: string, taskName: string) => void;
   onUpdated: () => void;
   onClose: () => void;
@@ -78,37 +80,27 @@ export function TaskDetailModal({
   const [addTimeEnd, setAddTimeEnd] = useState("");
   const [addingTime, setAddingTime] = useState(false);
 
-  const { data: taskTimeEntries = [] } = useQuery({
-    queryKey: ["time-entries-by-task", projectId, task?.id],
-    enabled: !!projectId && !!task?.id && open,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("time_entries")
-        .select("*")
-        .eq("project_id", projectId)
-        .eq("task_id", task!.id)
-        .order("start_time", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as TimeEntry[];
-    },
-  });
+  const taskTimeEntries =
+    task?.id && projectTimeEntries?.length
+      ? [...projectTimeEntries]
+          .filter((e) => e.task_id === task.id)
+          .sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+      : [];
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: only sync when modal opens for this task (task?.id), not on every task field change
   useEffect(() => {
     if (task && open) {
       const desc = task.description ?? "";
+      setName(task.name);
+      setDescription(desc);
+      descriptionRef.current = desc;
+      setStatus((task as { status?: string }).status ?? (task.completed ? "done" : "todo"));
+      setSelectedTagIds((task.task_tags ?? []).map((tt) => tt.tag_id));
+      setShowAddTime(false);
       const now = new Date();
       const oneHourAgo = new Date(now.getTime() - 3600000);
-      queueMicrotask(() => {
-        setName(task.name);
-        setDescription(desc);
-        descriptionRef.current = desc;
-        setStatus((task as { status?: string }).status ?? (task.completed ? "done" : "todo"));
-        setSelectedTagIds((task.task_tags ?? []).map((tt) => tt.tag_id));
-        setShowAddTime(false);
-        setAddTimeStart(oneHourAgo.toISOString().slice(0, 16));
-        setAddTimeEnd(now.toISOString().slice(0, 16));
-      });
+      setAddTimeStart(oneHourAgo.toISOString().slice(0, 16));
+      setAddTimeEnd(now.toISOString().slice(0, 16));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only sync when modal opens for this task
   }, [task?.id, open]);
@@ -175,6 +167,7 @@ export function TaskDetailModal({
         task_name: task.name,
         start_time: start.toISOString(),
         end_time: end.toISOString(),
+        source: "manual",
       })
       .select("id")
       .single();
@@ -186,7 +179,6 @@ export function TaskDetailModal({
     setAddingTime(false);
     if (!error) {
       queryClient.invalidateQueries({ queryKey: ["time-entries", projectId] });
-      queryClient.invalidateQueries({ queryKey: ["time-entries-by-task", projectId, task.id] });
       onUpdated();
       setShowAddTime(false);
       setAddTimeStart(new Date(Date.now() - 3600000).toISOString().slice(0, 16));
@@ -209,7 +201,17 @@ export function TaskDetailModal({
         }
       }}
     >
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        className="max-w-lg"
+        onPointerDownOutside={() => {
+          const html = editorGetHtmlRef.current?.();
+          if (typeof html === "string") descriptionRef.current = html;
+        }}
+        onEscapeKeyDown={() => {
+          const html = editorGetHtmlRef.current?.();
+          if (typeof html === "string") descriptionRef.current = html;
+        }}
+      >
         <div className="relative">
           <DialogHeader>
             <div className="flex items-center justify-between">
@@ -308,6 +310,7 @@ export function TaskDetailModal({
                   <Table>
                     <TableHeader>
                       <TableRow className="hover:bg-transparent">
+                        <TableHead className="h-8 w-10 text-xs">Type</TableHead>
                         <TableHead className="h-8 text-xs">Start</TableHead>
                         <TableHead className="h-8 text-xs">End</TableHead>
                         <TableHead className="h-8 text-xs">Duration</TableHead>
@@ -320,8 +323,14 @@ export function TaskDetailModal({
                         const mins = end
                           ? Math.round((end.getTime() - start.getTime()) / (60 * 1000))
                           : 0;
+                        const source =
+                          (entry as { source?: "automatic" | "manual" | "corrected" }).source ??
+                          "manual";
                         return (
                           <TableRow key={entry.id}>
+                            <TableCell className="w-10 py-1.5">
+                              <EntrySourceBadge source={source} />
+                            </TableCell>
                             <TableCell className="py-1.5 text-xs text-muted-foreground">
                               {start.toLocaleString()}
                             </TableCell>

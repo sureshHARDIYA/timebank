@@ -16,6 +16,7 @@ export function useActiveTimer(options?: ActiveTimerOptions) {
     queryKey: ["active-timer", user?.id],
     enabled: !!user?.id,
     refetchInterval: options?.refetchInterval,
+    staleTime: 60 * 1000,
     queryFn: async () => {
       if (!user?.id) return null;
       const { data, error } = await supabase

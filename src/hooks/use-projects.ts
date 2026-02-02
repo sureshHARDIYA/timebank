@@ -10,15 +10,18 @@ export type ProjectWithClient = Project & { clients: Client | null };
 /**
  * Single shared projects query (full data with clients) so dashboard and
  * QuickStartTimerModal share the same cache and only one request is made.
+ * Pass enabled: false (e.g. when modal is closed) to avoid fetching until needed.
  */
-export function useProjects(options?: { search?: string }) {
+export function useProjects(options?: { search?: string; enabled?: boolean }) {
   const supabase = createClient();
   const { data: user } = useUser();
   const search = options?.search ?? "";
+  const enabled = options?.enabled !== false && !!user?.id;
 
   return useQuery({
     queryKey: ["projects", user?.id, search],
-    enabled: !!user?.id,
+    enabled,
+    staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       if (!user?.id) return [];
       let q = supabase

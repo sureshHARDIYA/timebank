@@ -78,16 +78,29 @@ const initialNodes = [
 function InitialContentPlugin({ html }: { html: string }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
-    if (!html?.trim()) return;
+    let currentHtml = "";
+    editor.getEditorState().read(() => {
+      currentHtml = $generateHtmlFromNodes(editor, null);
+    });
+    if (currentHtml === html) return;
+    if (!html?.trim()) {
+      editor.update(
+        () => {
+          const root = $getRoot();
+          root.clear();
+        },
+        { discrete: true }
+      );
+      return;
+    }
     editor.update(
       () => {
         const root = $getRoot();
-        if (root.getFirstChild()) return;
         const parser = new DOMParser();
         const dom = parser.parseFromString(html, "text/html");
         const nodes = $generateNodesFromDOM(editor, dom);
+        root.clear();
         if (nodes.length > 0) {
-          root.clear();
           root.append(...nodes);
         }
       },

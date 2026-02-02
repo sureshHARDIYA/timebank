@@ -26,7 +26,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Filter, LayoutGrid, List, MoreVertical, Plus, Search } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -41,6 +41,7 @@ function useClients() {
   const supabase = createClient();
   return useQuery({
     queryKey: ["clients"],
+    staleTime: 2 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase.from("clients").select("*").order("name");
       if (error) throw error;
@@ -55,10 +56,16 @@ export default function DashboardPage() {
   const supabase = createClient();
   const { data: user } = useUser();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [openNew, setOpenNew] = useState(false);
 
-  const { data: projects = [], isLoading } = useProjects({ search });
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: projects = [], isLoading } = useProjects({ search: debouncedSearch });
   const { data: clients = [] } = useClients();
 
   const form = useForm<NewProjectForm>({

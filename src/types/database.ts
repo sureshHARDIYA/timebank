@@ -131,6 +131,7 @@ export interface Database {
           task_name: string | null;
           start_time: string;
           end_time: string | null;
+          source?: "automatic" | "manual" | "corrected";
           created_at: string;
           updated_at: string;
         };
@@ -142,6 +143,7 @@ export interface Database {
           task_name?: string | null;
           start_time: string;
           end_time?: string | null;
+          source?: "automatic" | "manual" | "corrected";
           created_at?: string;
           updated_at?: string;
         };
@@ -153,6 +155,7 @@ export interface Database {
           task_name?: string | null;
           start_time?: string;
           end_time?: string | null;
+          source?: "automatic" | "manual" | "corrected";
           created_at?: string;
           updated_at?: string;
         };

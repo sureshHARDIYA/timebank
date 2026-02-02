@@ -99,6 +99,8 @@ export function EditTimeEntryDialog({
 
   async function onSubmit(data: FormData) {
     if (!entry) return;
+    const currentSource = (entry as { source?: "automatic" | "manual" | "corrected" }).source;
+    const newSource = currentSource === "automatic" ? "corrected" : (currentSource ?? "manual");
     const { error } = await supabase
       .from("time_entries")
       .update({
@@ -106,6 +108,7 @@ export function EditTimeEntryDialog({
         task_name: data.task_name || null,
         start_time: new Date(data.start_time).toISOString(),
         end_time: new Date(data.end_time).toISOString(),
+        source: newSource,
         updated_at: new Date().toISOString(),
       })
       .eq("id", entry.id);

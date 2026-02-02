@@ -57,7 +57,7 @@ export function QuickStartTimerModal({
   const supabase = createClient();
   const queryClient = useQueryClient();
   const { data: user } = useUser();
-  const { data: projects = [] } = useProjects();
+  const { data: projects = [] } = useProjects({ enabled: open });
   const [projectId, setProjectId] = useState("");
   const [taskId, setTaskId] = useState("");
   const [taskName, setTaskName] = useState("");
