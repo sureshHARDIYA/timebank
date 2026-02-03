@@ -24,9 +24,18 @@ import { createClient } from "@/lib/supabase/client";
 import type { Client } from "@/types/database";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Filter, LayoutGrid, List, MoreVertical, Plus, Search } from "lucide-react";
+import {
+  Filter,
+  FolderOpen,
+  LayoutGrid,
+  List,
+  MoreVertical,
+  Plus,
+  Search,
+  Trash2,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useState } from "react";
+import React, { useSyncExternalStore, useEffect, useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 
@@ -59,14 +68,27 @@ export default function DashboardPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [openNew, setOpenNew] = useState(false);
+  const [clientFilterId, setClientFilterId] = useState<string | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<(typeof projects)[0] | null>(null);
+  const [deletingProjectId, setDeletingProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data: projects = [], isLoading } = useProjects({ search: debouncedSearch });
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
+  const { data: projects = [], isLoading } = useProjects({
+    search: debouncedSearch,
+    clientId: clientFilterId,
+  });
   const { data: clients = [] } = useClients();
+
+  const showLoadingSkeleton = !mounted || isLoading;
 
   const form = useForm<NewProjectForm>({
     resolver: zodResolver(newProjectSchema),
@@ -94,6 +116,19 @@ export default function DashboardPage() {
     form.reset();
   }
 
+  async function confirmDeleteProject() {
+    if (!projectToDelete) return;
+    setDeletingProjectId(projectToDelete.id);
+    const { error } = await supabase.from("projects").delete().eq("id", projectToDelete.id);
+    setDeletingProjectId(null);
+    setProjectToDelete(null);
+    if (!error) {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["time-entries"] });
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -111,9 +146,31 @@ export default function DashboardPage() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="shrink-0">
-            <Filter className="h-4 w-4" />
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant={clientFilterId ? "secondary" : "outline"}
+                size="icon"
+                className="shrink-0"
+                title="Filter by client"
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-[12rem]">
+              <DropdownMenuItem onClick={() => setClientFilterId(null)}>
+                {!clientFilterId ? "✓ " : ""}
+                All clients
+              </DropdownMenuItem>
+              {clients.map((client) => (
+                <DropdownMenuItem key={client.id} onClick={() => setClientFilterId(client.id)}>
+                  {clientFilterId === client.id ? "✓ " : ""}
+                  {client.name}
+                </DropdownMenuItem>
+              ))}
+              {clients.length === 0 && <DropdownMenuItem disabled>No clients yet</DropdownMenuItem>}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <div className="flex rounded-md border">
             <Button
               variant={viewMode === "grid" ? "secondary" : "ghost"}
@@ -142,7 +199,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {showLoadingSkeleton ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <Card key={i} className="animate-pulse">
@@ -176,10 +233,18 @@ export default function DashboardPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuItem onClick={() => router.push(`/dashboard/${project.id}`)}>
+                      <FolderOpen className="mr-2 h-4 w-4" />
                       Open
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
-                      Settings
+                    <DropdownMenuItem
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProjectToDelete(project);
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete project
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -241,7 +306,18 @@ export default function DashboardPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => router.push(`/dashboard/${project.id}`)}>
+                            <FolderOpen className="mr-2 h-4 w-4" />
                             Open
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setProjectToDelete(project);
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete project
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -253,6 +329,35 @@ export default function DashboardPage() {
           </div>
         </Card>
       )}
+
+      <Dialog
+        open={!!projectToDelete}
+        onOpenChange={(open) => {
+          if (!open) setProjectToDelete(null);
+        }}
+      >
+        <DialogContent
+          title="Delete project?"
+          description={
+            projectToDelete
+              ? `"${projectToDelete.name}" and all of its data will be permanently deleted. This includes all tasks, time entries, and invoices. This action cannot be undone.`
+              : ""
+          }
+        >
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setProjectToDelete(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteProject}
+              disabled={!!deletingProjectId}
+            >
+              {deletingProjectId ? "Deleting…" : "Delete project"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={openNew} onOpenChange={setOpenNew}>
         <DialogContent

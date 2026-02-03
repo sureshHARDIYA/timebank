@@ -24,7 +24,7 @@ import { formatCurrency } from "@/lib/utils";
 import type { Client } from "@/types/database";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, MoreVertical, Plus, Search } from "lucide-react";
+import { FileText, MoreVertical, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -60,9 +60,24 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Client | null>(null);
+  const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
+  const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
 
   const { data: user } = useUser();
   const { data: clients = [], isLoading } = useClients(search);
+
+  const { data: projectsForClient = [] } = useQuery({
+    queryKey: ["projects-for-client", clientToDelete?.id],
+    enabled: !!clientToDelete?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("client_id", clientToDelete!.id);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const form = useForm<ClientForm>({
     resolver: zodResolver(clientSchema),
@@ -117,6 +132,17 @@ export default function ClientsPage() {
     setEditing(null);
     form.reset({ name: "", email: "", hourly_rate_usd: 0 });
     setOpen(true);
+  }
+
+  async function confirmDeleteClient() {
+    if (!clientToDelete || projectsForClient.length > 0) return;
+    setDeletingClientId(clientToDelete.id);
+    const { error } = await supabase.from("clients").delete().eq("id", clientToDelete.id);
+    setDeletingClientId(null);
+    setClientToDelete(null);
+    if (!error) {
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    }
   }
 
   return (
@@ -179,7 +205,17 @@ export default function ClientsPage() {
                               View report
                             </Link>
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEdit(client)}>Edit</DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEdit(client)}>
+                            <Pencil className="mr-2 h-4 w-4" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setClientToDelete(client)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete client
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
@@ -190,6 +226,47 @@ export default function ClientsPage() {
           </table>
         </div>
       </Card>
+
+      <Dialog
+        open={!!clientToDelete}
+        onOpenChange={(open) => {
+          if (!open) setClientToDelete(null);
+        }}
+      >
+        <DialogContent
+          title={
+            clientToDelete && projectsForClient.length > 0
+              ? "Cannot delete client"
+              : "Delete client?"
+          }
+          description={
+            clientToDelete
+              ? projectsForClient.length > 0
+                ? `"${clientToDelete.name}" has ${projectsForClient.length} project(s). Delete all projects for this client first from the Projects page, then you can delete the client.`
+                : `Remove "${clientToDelete.name}" from your clients? This action cannot be undone.`
+              : ""
+          }
+        >
+          <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setClientToDelete(null)}>
+              {projectsForClient.length > 0 ? "OK" : "Cancel"}
+            </Button>
+            {projectsForClient.length > 0 ? (
+              <Button asChild className="bg-[#3ECF8E] hover:bg-[#2EB67D]">
+                <Link href="/dashboard">Go to projects</Link>
+              </Button>
+            ) : (
+              <Button
+                variant="destructive"
+                onClick={confirmDeleteClient}
+                disabled={!!deletingClientId}
+              >
+                {deletingClientId ? "Deleting…" : "Delete client"}
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

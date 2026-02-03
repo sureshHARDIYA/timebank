@@ -12,14 +12,19 @@ export type ProjectWithClient = Project & { clients: Client | null };
  * QuickStartTimerModal share the same cache and only one request is made.
  * Pass enabled: false (e.g. when modal is closed) to avoid fetching until needed.
  */
-export function useProjects(options?: { search?: string; enabled?: boolean }) {
+export function useProjects(options?: {
+  search?: string;
+  clientId?: string | null;
+  enabled?: boolean;
+}) {
   const supabase = createClient();
   const { data: user } = useUser();
   const search = options?.search ?? "";
+  const clientId = options?.clientId ?? null;
   const enabled = options?.enabled !== false && !!user?.id;
 
   return useQuery({
-    queryKey: ["projects", user?.id, search],
+    queryKey: ["projects", user?.id, search, clientId],
     enabled,
     staleTime: 2 * 60 * 1000,
     queryFn: async () => {
@@ -31,6 +36,9 @@ export function useProjects(options?: { search?: string; enabled?: boolean }) {
         .order("created_at", { ascending: false });
       if (search?.trim()) {
         q = q.ilike("name", `%${search.trim()}%`);
+      }
+      if (clientId) {
+        q = q.eq("client_id", clientId);
       }
       const { data, error } = await q;
       if (error) throw error;
