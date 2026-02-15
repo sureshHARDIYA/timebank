@@ -36,6 +36,7 @@ export interface Database {
           name: string;
           email: string;
           hourly_rate_usd: number;
+          invited_user_id: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -45,6 +46,7 @@ export interface Database {
           name: string;
           email: string;
           hourly_rate_usd?: number;
+          invited_user_id?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -54,8 +56,38 @@ export interface Database {
           name?: string;
           email?: string;
           hourly_rate_usd?: number;
+          invited_user_id?: string | null;
           created_at?: string;
           updated_at?: string;
+        };
+      };
+      client_invites: {
+        Row: {
+          id: string;
+          client_id: string;
+          email: string;
+          token: string;
+          expires_at: string;
+          accepted_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          client_id: string;
+          email: string;
+          token: string;
+          expires_at: string;
+          accepted_at?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          client_id?: string;
+          email?: string;
+          token?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+          created_at?: string;
         };
       };
       projects: {

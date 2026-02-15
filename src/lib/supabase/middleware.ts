@@ -27,8 +27,8 @@ export async function updateSession(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Disable public signup: send /signup to login
-  if (pathname === "/signup") {
+  // Disable public signup unless they have an invite token
+  if (pathname === "/signup" && !request.nextUrl.searchParams.get("invite")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -39,8 +39,9 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const isAuthPage = pathname === "/login";
+  const isInviteAcceptPage = pathname === "/invite/accept";
 
-  if (!user && !isAuthPage && pathname !== "/") {
+  if (!user && !isAuthPage && pathname !== "/" && !isInviteAcceptPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
@@ -56,8 +57,8 @@ export async function updateSession(request: NextRequest) {
     const isApproved = profile?.is_approved === true;
 
     if (!isApproved) {
-      // Not approved: only allow login page (to show "pending" message) or home
-      if (pathname !== "/" && pathname !== "/login") {
+      // Not approved: allow login, home, and invite accept (so they can accept and get approved)
+      if (pathname !== "/" && pathname !== "/login" && !isInviteAcceptPage) {
         const url = request.nextUrl.clone();
         url.pathname = "/login";
         url.searchParams.set("pending", "1");

@@ -8,8 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Clock } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -27,8 +27,10 @@ const schema = z
 
 type FormData = z.infer<typeof schema>;
 
-export default function SignUpPage() {
+function SignUpContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
   const supabase = createClient();
   const [error, setError] = useState<string | null>(null);
 
@@ -51,7 +53,11 @@ export default function SignUpPage() {
       setError(error.message);
       return;
     }
-    router.push("/dashboard");
+    if (inviteToken) {
+      router.push(`/invite/accept?token=${encodeURIComponent(inviteToken)}`);
+    } else {
+      router.push("/dashboard");
+    }
     router.refresh();
   }
 
@@ -100,12 +106,42 @@ export default function SignUpPage() {
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-[#3ECF8E] hover:underline">
+            <Link
+              href={inviteToken ? `/login?invite=${encodeURIComponent(inviteToken)}` : "/login"}
+              className="text-[#3ECF8E] hover:underline"
+            >
               Sign in
             </Link>
           </p>
         </form>
       </CardContent>
     </Card>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense
+      fallback={
+        <Card className="w-full max-w-md">
+          <CardHeader className="space-y-1 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-[#3ECF8E]">
+              <Clock className="h-6 w-6 text-white" />
+            </div>
+            <CardTitle className="text-2xl">Create account</CardTitle>
+            <CardDescription>Time Tracker</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="h-10 rounded bg-muted animate-pulse" />
+              <div className="h-10 rounded bg-muted animate-pulse" />
+              <div className="h-10 rounded bg-muted animate-pulse" />
+            </div>
+          </CardContent>
+        </Card>
+      }
+    >
+      <SignUpContent />
+    </Suspense>
   );
 }

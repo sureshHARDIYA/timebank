@@ -24,7 +24,7 @@ import { formatCurrency } from "@/lib/utils";
 import type { Client } from "@/types/database";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, MoreVertical, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { Copy, FileText, Mail, MoreVertical, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -62,6 +62,14 @@ export default function ClientsPage() {
   const [editing, setEditing] = useState<Client | null>(null);
   const [clientToDelete, setClientToDelete] = useState<Client | null>(null);
   const [deletingClientId, setDeletingClientId] = useState<string | null>(null);
+  const [clientToInvite, setClientToInvite] = useState<Client | null>(null);
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteResult, setInviteResult] = useState<{
+    acceptUrl?: string;
+    message?: string;
+    emailSent?: boolean;
+  } | null>(null);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   const { data: user } = useUser();
   const { data: clients = [], isLoading } = useClients(search);
@@ -145,6 +153,44 @@ export default function ClientsPage() {
     }
   }
 
+  async function sendInvite() {
+    if (!clientToInvite) return;
+    setSendingInvite(true);
+    setInviteResult(null);
+    try {
+      const res = await fetch("/api/invite/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: clientToInvite.id }),
+      });
+      const data = (await res.json()) as {
+        success?: boolean;
+        acceptUrl?: string;
+        message?: string;
+        error?: string;
+        emailSent?: boolean;
+      };
+      if (!res.ok) {
+        setInviteResult({ message: data.error ?? "Failed to send invite" });
+        setSendingInvite(false);
+        return;
+      }
+      setInviteResult({
+        acceptUrl: data.acceptUrl,
+        message: data.message ?? "Invite sent.",
+        emailSent: data.emailSent,
+      });
+      setLinkCopied(false);
+      queryClient.invalidateQueries({ queryKey: ["clients"] });
+    } catch (e) {
+      setInviteResult({
+        message: e instanceof Error ? e.message : "Failed to send invite",
+      });
+    } finally {
+      setSendingInvite(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -210,6 +256,18 @@ export default function ClientsPage() {
                             Edit
                           </DropdownMenuItem>
                           <DropdownMenuItem
+                            onClick={() => {
+                              setClientToInvite(client);
+                              setInviteResult(null);
+                            }}
+                            disabled={!!(client as { invited_user_id?: string }).invited_user_id}
+                          >
+                            <Mail className="mr-2 h-4 w-4" />
+                            {(client as { invited_user_id?: string }).invited_user_id
+                              ? "Already invited"
+                              : "Invite client"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
                             onClick={() => setClientToDelete(client)}
                             className="text-destructive focus:text-destructive"
                           >
@@ -226,6 +284,97 @@ export default function ClientsPage() {
           </table>
         </div>
       </Card>
+
+      <Dialog
+        open={!!clientToInvite}
+        onOpenChange={(open) => {
+          if (!open) {
+            setClientToInvite(null);
+            setInviteResult(null);
+          }
+        }}
+      >
+        <DialogContent
+          title="Invite client"
+          description={
+            clientToInvite
+              ? (clientToInvite as { invited_user_id?: string }).invited_user_id
+                ? "This client has already been invited and can log in to view their projects."
+                : `Send an invite to ${clientToInvite.email}? They will receive a link to sign up or sign in and view their projects and time entries.`
+              : ""
+          }
+        >
+          {clientToInvite && (clientToInvite as { invited_user_id?: string }).invited_user_id && (
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setClientToInvite(null)}>
+                Close
+              </Button>
+            </DialogFooter>
+          )}
+          {clientToInvite && !(clientToInvite as { invited_user_id?: string }).invited_user_id && (
+            <>
+              {inviteResult?.message && (
+                <p
+                  className={`text-sm ${
+                    inviteResult.emailSent === false && inviteResult.acceptUrl
+                      ? "text-amber-600 dark:text-amber-500"
+                      : inviteResult.acceptUrl
+                        ? "text-foreground"
+                        : "text-destructive"
+                  }`}
+                >
+                  {inviteResult.message}
+                </p>
+              )}
+              {inviteResult?.acceptUrl && (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 rounded-md bg-muted p-2 text-xs break-all">
+                    {inviteResult.acceptUrl}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(inviteResult.acceptUrl!);
+                        setLinkCopied(true);
+                        setTimeout(() => setLinkCopied(false), 2000);
+                      } catch {
+                        setLinkCopied(false);
+                      }
+                    }}
+                  >
+                    {linkCopied ? (
+                      "Copied!"
+                    ) : (
+                      <>
+                        <Copy className="mr-1 h-3.5 w-3.5" />
+                        Copy link
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+              <DialogFooter className="mt-4">
+                <Button variant="outline" onClick={() => setClientToInvite(null)}>
+                  {inviteResult ? "Close" : "Cancel"}
+                </Button>
+                {!inviteResult && (
+                  <Button
+                    className="bg-[#3ECF8E] hover:bg-[#2EB67D]"
+                    onClick={sendInvite}
+                    disabled={sendingInvite}
+                  >
+                    {sendingInvite ? "Sending…" : "Send invite"}
+                  </Button>
+                )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog
         open={!!clientToDelete}

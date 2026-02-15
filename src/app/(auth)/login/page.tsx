@@ -71,7 +71,12 @@ function LoginContent() {
       setError("Your account is pending approval. You’ll be able to sign in once approved.");
       return;
     }
-    router.push("/dashboard");
+    const inviteToken = searchParams.get("invite");
+    if (inviteToken) {
+      router.push(`/invite/accept?token=${encodeURIComponent(inviteToken)}`);
+    } else {
+      router.push("/dashboard");
+    }
     router.refresh();
   }
 
